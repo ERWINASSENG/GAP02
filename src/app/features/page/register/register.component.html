@@ -1,0 +1,168 @@
+<div class="p-6 max-w-3xl mx-auto space-y-6" id="admin-user-create-container">
+  <!-- Header de la page -->
+  <header class="flex flex-col md:flex-row md:items-center justify-between gap-4" id="admin-user-create-header">
+    <div>
+      <h1 class="text-3xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">Créer un collaborateur</h1>
+      <p class="text-slate-500 dark:text-slate-400">Enregistrez un nouveau compte utilisateur ou administrateur sur la plateforme.</p>
+    </div>
+  </header>
+
+  <!-- Grille principale -->
+  <div class="grid grid-cols-1 gap-6" id="admin-user-create-grid">
+    <!-- Formulaire (2 colonnes) -->
+    <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs p-6 space-y-6" id="admin-user-create-card">
+      <div class="border-b border-slate-100 dark:border-slate-800/80 pb-4">
+        <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Informations de sécurité</h2>
+        <p class="text-xs text-slate-500 dark:text-slate-400">Remplissez les champs ci-dessous pour générer les identifiants de connexion.</p>
+      </div>
+
+      <!-- Messages d'alerte -->
+      @if (errorMessage()) {
+        <div class="p-4 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900 text-red-800 dark:text-red-200 text-sm rounded-xl flex items-start gap-3" id="admin-user-create-error">
+          <mat-icon class="text-red-500 mt-0.5">error_outline</mat-icon>
+          <div>
+            <strong class="font-semibold block">Échec de la création</strong>
+            <span>{{ errorMessage() }}</span>
+          </div>
+        </div>
+      }
+
+      @if (successMessage()) {
+        <div class="p-4 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900 text-emerald-800 dark:text-emerald-200 text-sm rounded-xl flex items-start gap-3" id="admin-user-create-success">
+          <mat-icon class="text-emerald-500 mt-0.5">check_circle_outline</mat-icon>
+          <div>
+            <strong class="font-semibold block">Succès</strong>
+            <span>{{ successMessage() }}</span>
+          </div>
+        </div>
+      }
+
+      <!-- Formulaire principal -->
+      <form [formGroup]="registerForm" (ngSubmit)="onSubmit()" class="space-y-4" id="user-create-form">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <!-- Nom complet -->
+          <div>
+            <label for="displayName" class="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">Nom complet</label>
+            <div class="relative">
+              <span class="material-icons text-slate-400 dark:text-slate-500 absolute left-3 top-1/2 -translate-y-1/2 text-sm">person_outline</span>
+              <input
+                type="text"
+                id="displayName"
+                formControlName="displayName"
+                placeholder="Ex: Jean Dupont"
+                class="w-full bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-600 rounded-xl py-3 pl-10 pr-4 text-sm transition-all outline-none"
+              />
+            </div>
+            @if (registerForm.get('displayName')?.touched && registerForm.get('displayName')?.errors?.['required']) {
+              <p class="text-xs text-red-500 mt-1">Le nom complet est requis.</p>
+            }
+          </div>
+
+          <!-- Rôle -->
+          <div>
+            <label for="role" class="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">Rôle Professionnel</label>
+            <div class="relative">
+              <span class="material-icons text-slate-400 dark:text-slate-500 absolute left-3 top-1/2 -translate-y-1/2 text-sm">badge</span>
+              <select
+                id="role"
+                formControlName="role"
+                class="w-full bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 text-slate-900 dark:text-white rounded-xl py-3 pl-10 pr-8 text-sm transition-all outline-none appearance-none"
+              >
+                <option value="user" class="bg-white dark:bg-slate-950 text-slate-900 dark:text-white">Utilisateur / Pointeur de quai</option>
+                <option value="admin" class="bg-white dark:bg-slate-950 text-slate-900 dark:text-white">Administrateur Portuaire</option>
+              </select>
+              <span class="material-icons text-slate-400 dark:text-slate-500 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-sm">expand_more</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <!-- Site assigné -->
+          <div>
+            <label for="assignedSiteName" class="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">Site Assigné</label>
+            <div class="relative">
+              <span class="material-icons text-slate-400 dark:text-slate-500 absolute left-3 top-1/2 -translate-y-1/2 text-sm">place</span>
+              <select
+                id="assignedSiteName"
+                formControlName="assignedSiteName"
+                class="w-full bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 text-slate-900 dark:text-white rounded-xl py-3 pl-10 pr-8 text-sm transition-all outline-none appearance-none"
+              >
+                <option value="" class="bg-white dark:bg-slate-950 text-slate-900 dark:text-white">Aucun</option>
+                @for (site of sites; track site) {
+                  <option [value]="site" class="bg-white dark:bg-slate-950 text-slate-900 dark:text-white">{{ site }}</option>
+                }
+              </select>
+              <span class="material-icons text-slate-400 dark:text-slate-500 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-sm">expand_more</span>
+            </div>
+          </div>
+
+          <!-- Email -->
+          <div>
+            <label for="email" class="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">Adresse Email</label>
+            <div class="relative">
+              <span class="material-icons text-slate-400 dark:text-slate-500 absolute left-3 top-1/2 -translate-y-1/2 text-sm">alternate_email</span>
+              <input
+                type="email"
+                id="email"
+                formControlName="email"
+                placeholder="Ex: jean.dupont@port.sn"
+                class="w-full bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-600 rounded-xl py-3 pl-10 pr-4 text-sm transition-all outline-none"
+              />
+            </div>
+            @if (registerForm.get('email')?.touched && registerForm.get('email')?.errors?.['required']) {
+              <p class="text-xs text-red-500 mt-1">L'adresse email est requise.</p>
+            }
+            @if (registerForm.get('email')?.touched && registerForm.get('email')?.errors?.['email']) {
+              <p class="text-xs text-red-500 mt-1">L'adresse email est invalide.</p>
+            }
+          </div>
+        </div>
+
+        <!-- Mot de passe -->
+        <div>
+          <label for="password" class="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">Mot de passe temporaire</label>
+          <div class="relative">
+            <span class="material-icons text-slate-400 dark:text-slate-500 absolute left-3 top-1/2 -translate-y-1/2 text-sm">lock_outline</span>
+            <input
+              type="password"
+              id="password"
+              formControlName="password"
+              placeholder="••••••••••••"
+              class="w-full bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-600 rounded-xl py-3 pl-10 pr-4 text-sm transition-all outline-none"
+            />
+          </div>
+          @if (registerForm.get('password')?.touched && registerForm.get('password')?.errors?.['required']) {
+            <p class="text-xs text-red-500 mt-1">Le mot de passe est requis.</p>
+          }
+          @if (registerForm.get('password')?.touched && registerForm.get('password')?.errors?.['minlength']) {
+            <p class="text-xs text-red-500 mt-1">Le mot de passe doit contenir au moins 6 caractères.</p>
+          }
+        </div>
+
+        <div class="flex gap-3 justify-end pt-4" id="form-actions">
+          <a
+            routerLink="/admin/view"
+            class="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 text-slate-700 dark:text-slate-300 font-medium text-sm transition-all text-center cursor-pointer"
+            id="btn-cancel"
+          >
+            Retour
+          </a>
+          <button
+            type="submit"
+            [disabled]="registerForm.invalid || isLoading()"
+            class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-100 dark:disabled:bg-slate-800 disabled:text-slate-400 text-white font-medium rounded-xl text-sm transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+            id="btn-submit"
+          >
+            @if (isLoading()) {
+              <div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              <span>Enregistrement...</span>
+            } @else {
+              <mat-icon class="text-sm h-4 w-4 leading-none">person_add</mat-icon>
+              <span>Enregistrer</span>
+            }
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

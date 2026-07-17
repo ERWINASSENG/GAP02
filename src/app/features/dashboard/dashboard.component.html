@@ -1,0 +1,13 @@
+<div class="space-y-6" id="dashboard-view">
+  <!-- En-tête de bienvenue -->
+  <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-900/40 p-6 rounded-2xl border border-slate-800/60 backdrop-blur-sm" id="welcome-banner">
+    <div>
+      <h1 class="text-lg sm:text-xl md:text-2xl font-bold text-white tracking-tight whitespace-nowrap overflow-hidden text-ellipsis">Bonjour, {{ currentUser()?.displayName || 'Collaborateur' }} 👋</h1>
+    </div>
+
+  </div>
+
+  @if (currentUser()?.role === 'admin') {
+    <!-- Contenu administrateur vide -->
+  }
+</div>
