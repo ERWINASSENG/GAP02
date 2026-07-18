@@ -1,6 +1,6 @@
 <div class="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6" id="cahier-page-container">
 
-  @if (!authService.currentUser()?.assignedSiteName) {
+  @if (!authService.currentUser()?.assignedSiteName && authService.currentUser()?.role !== 'admin') {
     <!-- Aucun site spécifié : Affichage d'un écran d'accès restreint poli et professionnel -->
     <div class="flex flex-col items-center justify-center py-16 px-4 text-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-xs space-y-5 animate-fade-in" id="no-site-error-container">
       <div class="w-16 h-16 rounded-2xl bg-amber-500/10 dark:bg-amber-500/5 flex items-center justify-center text-amber-500" id="no-site-icon">
