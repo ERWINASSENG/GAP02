@@ -524,6 +524,10 @@ export class CahierComponent implements OnInit {
 
       await this.cahierService.saveDraft(draftData);
       this.isCreationPageOpen.set(false);
+    } catch (err: unknown) {
+      console.error(err);
+      const errMsg = err instanceof Error ? err.message : 'Une erreur est survenue lors de l\'enregistrement du brouillon.';
+      this.validationBlockMessage.set(errMsg);
     } finally {
       this.isSaving.set(false);
     }
@@ -698,7 +702,10 @@ export class CahierComponent implements OnInit {
     if (id) {
       this.isSaving.set(true);
       try {
-        await this.cahierService.deleteOperation(id);
+        const success = await this.cahierService.deleteOperation(id);
+        if (!success) {
+          this.validationBlockMessage.set('La suppression a échoué. L\'opération est toujours présente.');
+        }
       } finally {
         this.isSaving.set(false);
         this.operationToDelete.set(null);
@@ -933,4 +940,3 @@ export class CahierComponent implements OnInit {
   }
 
 }
-

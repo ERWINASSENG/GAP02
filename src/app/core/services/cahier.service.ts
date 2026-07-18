@@ -330,7 +330,8 @@ export class CahierService {
       isDraft: false
     };
 
-    const filtered = this._operations().filter(op => op.id !== id);
+    const previousOperations = this._operations();
+    const filtered = previousOperations.filter(op => op.id !== id);
     const updated = [finalizedOp, ...filtered];
     this._operations.set(updated);
 
@@ -354,30 +355,43 @@ export class CahierService {
         .select()
         .single();
 
-      if (!opError && opData) {
-        await this.supabaseService.client
-          .from('operation_items')
-          .delete()
-          .eq('operation_id', finalizedOp.id);
+      if (opError || !opData) {
+        throw opError || new Error('Échec de l\'enregistrement de l\'opération (aucune donnée retournée).');
+      }
 
-        if (finalizedOp.items && finalizedOp.items.length > 0) {
-          const dbItems = finalizedOp.items.map(item => ({
-            id: item.id || crypto.randomUUID(),
-            operation_id: finalizedOp.id,
-            date: item.date,
-            dn: item.dn || '',
-            produit: item.produit || '',
-            quantite: Number(item.qte) || 0,
-            pu: Number(item.pu) || 0,
-            montant: Number(item.montant) || 0
-          }));
-          await this.supabaseService.client
-            .from('operation_items')
-            .insert(dbItems);
+      const { error: deleteItemsError } = await this.supabaseService.client
+        .from('operation_items')
+        .delete()
+        .eq('operation_id', finalizedOp.id);
+
+      if (deleteItemsError) {
+        throw deleteItemsError;
+      }
+
+      if (finalizedOp.items && finalizedOp.items.length > 0) {
+        const dbItems = finalizedOp.items.map(item => ({
+          id: item.id || crypto.randomUUID(),
+          operation_id: finalizedOp.id,
+          date: item.date,
+          dn: item.dn || '',
+          produit: item.produit || '',
+          quantite: Number(item.qte) || 0,
+          pu: Number(item.pu) || 0,
+          montant: Number(item.montant) || 0
+        }));
+        const { error: insertItemsError } = await this.supabaseService.client
+          .from('operation_items')
+          .insert(dbItems);
+
+        if (insertItemsError) {
+          throw insertItemsError;
         }
       }
     } catch (err) {
       console.error('Error saving operation:', err);
+      // Rollback: l'opération n'a pas été correctement persistée, on ne ment pas à l'UI
+      this._operations.set(previousOperations);
+      throw err instanceof Error ? err : new Error('Erreur lors de l\'enregistrement de l\'opération.');
     }
 
     return finalizedOp;
@@ -423,6 +437,7 @@ export class CahierService {
       updated = [draftOp, ...this._operations()];
     }
 
+    const previousOperations = this._operations();
     this._operations.set(updated);
 
     try {
@@ -445,30 +460,42 @@ export class CahierService {
         .select()
         .single();
 
-      if (!opError && opData) {
-        await this.supabaseService.client
-          .from('operation_items')
-          .delete()
-          .eq('operation_id', draftOp.id);
+      if (opError || !opData) {
+        throw opError || new Error('Échec de l\'enregistrement du brouillon (aucune donnée retournée).');
+      }
 
-        if (draftOp.items && draftOp.items.length > 0) {
-          const dbItems = draftOp.items.map(item => ({
-            id: item.id || crypto.randomUUID(),
-            operation_id: draftOp.id,
-            date: item.date,
-            dn: item.dn || '',
-            produit: item.produit || '',
-            quantite: Number(item.qte) || 0,
-            pu: Number(item.pu) || 0,
-            montant: Number(item.montant) || 0
-          }));
-          await this.supabaseService.client
-            .from('operation_items')
-            .insert(dbItems);
+      const { error: deleteItemsError } = await this.supabaseService.client
+        .from('operation_items')
+        .delete()
+        .eq('operation_id', draftOp.id);
+
+      if (deleteItemsError) {
+        throw deleteItemsError;
+      }
+
+      if (draftOp.items && draftOp.items.length > 0) {
+        const dbItems = draftOp.items.map(item => ({
+          id: item.id || crypto.randomUUID(),
+          operation_id: draftOp.id,
+          date: item.date,
+          dn: item.dn || '',
+          produit: item.produit || '',
+          quantite: Number(item.qte) || 0,
+          pu: Number(item.pu) || 0,
+          montant: Number(item.montant) || 0
+        }));
+        const { error: insertItemsError } = await this.supabaseService.client
+          .from('operation_items')
+          .insert(dbItems);
+
+        if (insertItemsError) {
+          throw insertItemsError;
         }
       }
     } catch (err) {
       console.error('Error saving draft:', err);
+      this._operations.set(previousOperations);
+      throw err instanceof Error ? err : new Error('Erreur lors de l\'enregistrement du brouillon.');
     }
 
     return draftOp;
@@ -476,21 +503,34 @@ export class CahierService {
 
 
   async deleteOperation(id: string): Promise<boolean> {
-    const updated = this._operations().filter(op => op.id !== id);
+    const previousOperations = this._operations();
+    const updated = previousOperations.filter(op => op.id !== id);
     this._operations.set(updated);
 
     try {
-      await this.supabaseService.client
+      const { error: itemsError } = await this.supabaseService.client
         .from('operation_items')
         .delete()
         .eq('operation_id', id);
 
-      await this.supabaseService.client
+      if (itemsError) {
+        throw itemsError;
+      }
+
+      const { error: opError } = await this.supabaseService.client
         .from('operations')
         .delete()
         .eq('id', id);
+
+      if (opError) {
+        throw opError;
+      }
     } catch (err) {
       console.error('Error deleting operation:', err);
+      // Rollback: la suppression n'a pas été confirmée côté serveur (RLS, réseau, etc.),
+      // on ne fait pas croire à l'UI que l'opération a disparu.
+      this._operations.set(previousOperations);
+      return false;
     }
 
     return true;
