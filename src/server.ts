@@ -234,6 +234,21 @@ app.use((req, res, next) => {
 });
 
 /**
+ * Fallback for unresolved routes (CSR)
+ */
+app.use((req, res) => {
+  res.sendFile(resolve(browserDistFolder, 'index.html'));
+});
+
+/**
+ * Global Error Handler
+ */
+app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  console.error('Server error:', err);
+  res.status(500).send('Internal Server Error');
+});
+
+/**
  * Start the server if this file is run directly.
  */
 if (process.env['NODE_ENV'] === 'production') {
