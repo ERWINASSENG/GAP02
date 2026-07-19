@@ -423,7 +423,15 @@ export class CahierService {
       console.error('Error saving operation:', err);
       // Rollback: l'opération n'a pas été correctement persistée, on ne ment pas à l'UI
       this._operations.set(previousOperations);
-      throw err instanceof Error ? err : new Error('Erreur lors de l\'enregistrement de l\'opération.');
+      // Les erreurs Supabase (PostgrestError) ne sont pas des instances d'Error :
+      // il faut extraire leur `message` explicitement, sinon on perd la vraie cause
+      // et on retombe systématiquement sur le message générique.
+      const message = err instanceof Error
+        ? err.message
+        : (typeof err === 'object' && err !== null && 'message' in err)
+          ? String((err as { message?: unknown }).message)
+          : 'Erreur lors de l\'enregistrement de l\'opération.';
+      throw new Error(message);
     }
 
     return finalizedOp;
@@ -526,7 +534,12 @@ export class CahierService {
     } catch (err) {
       console.error('Error saving draft:', err);
       this._operations.set(previousOperations);
-      throw err instanceof Error ? err : new Error('Erreur lors de l\'enregistrement du brouillon.');
+      const message = err instanceof Error
+        ? err.message
+        : (typeof err === 'object' && err !== null && 'message' in err)
+          ? String((err as { message?: unknown }).message)
+          : 'Erreur lors de l\'enregistrement du brouillon.';
+      throw new Error(message);
     }
 
     return draftOp;
