@@ -423,7 +423,15 @@ export class CahierService {
       console.error('Error saving operation:', err);
       // Rollback: l'opération n'a pas été correctement persistée, on ne ment pas à l'UI
       this._operations.set(previousOperations);
-      throw err instanceof Error ? err : new Error('Erreur lors de l\'enregistrement de l\'opération.');
+      // Les erreurs Supabase (PostgrestError) ne sont pas des instances d'Error :
+      // il faut extraire leur `message` explicitement, sinon on perd la vraie cause
+      // et on retombe systématiquement sur le message générique.
+      const message = err instanceof Error
+        ? err.message
+        : (typeof err === 'object' && err !== null && 'message' in err)
+          ? String((err as { message?: unknown }).message)
+          : 'Erreur lors de l\'enregistrement de l\'opération.';
+      throw new Error(message);
     }
 
     return finalizedOp;
@@ -526,7 +534,12 @@ export class CahierService {
     } catch (err) {
       console.error('Error saving draft:', err);
       this._operations.set(previousOperations);
-      throw err instanceof Error ? err : new Error('Erreur lors de l\'enregistrement du brouillon.');
+      const message = err instanceof Error
+        ? err.message
+        : (typeof err === 'object' && err !== null && 'message' in err)
+          ? String((err as { message?: unknown }).message)
+          : 'Erreur lors de l\'enregistrement du brouillon.';
+      throw new Error(message);
     }
 
     return draftOp;
@@ -562,6 +575,121 @@ export class CahierService {
       // on ne fait pas croire à l'UI que l'opération a disparu.
       this._operations.set(previousOperations);
       return false;
+    }
+
+    return true;
+  }
+
+  /**
+   * Met à jour une opération depuis la vue admin, quel que soit son propriétaire.
+   * Contrairement à addOperation(), ne réassigne PAS collaborateur/user_id à
+   * l'utilisateur courant : l'auteur d'origine de l'opération est préservé.
+   * Agit sur _adminOperations (et non _operations, propre à l'utilisateur connecté).
+   */
+  async adminUpdateOperation(op: Operation): Promise<Operation> {
+    const previousAdminOps = this._adminOperations();
+    const updatedOptimistic = previousAdminOps.map(o => o.id === op.id ? op : o);
+    this._adminOperations.set(updatedOptimistic);
+
+    try {
+      const { error: opError } = await this.supabaseService.client
+        .from('operations')
+        .upsert([{
+          id: op.id,
+          site: op.site,
+          type: op.type,
+          date: op.date,
+          heure: op.heure,
+          details: op.details,
+          sonlevel: op.sonLevel,
+          frequence: op.frequence,
+          collaborateur: op.collaborateur,
+          isdraft: op.isDraft ?? false,
+          user_id: op.user_id,
+          week_id: op.week_id
+        }]);
+
+      if (opError) {
+        throw opError;
+      }
+
+      const { error: deleteItemsError } = await this.supabaseService.client
+        .from('operation_items')
+        .delete()
+        .eq('operation_id', op.id);
+
+      if (deleteItemsError) {
+        throw deleteItemsError;
+      }
+
+      if (op.items && op.items.length > 0) {
+        const dbItems = op.items.map(item => ({
+          id: item.id || crypto.randomUUID(),
+          operation_id: op.id,
+          dn: item.dn || '',
+          produit: item.produit || '',
+          quantite: Number(item.qte) || 0,
+          pu: Number(item.pu) || 0,
+          montant: Number(item.montant) || 0
+        }));
+        const { error: insertItemsError } = await this.supabaseService.client
+          .from('operation_items')
+          .insert(dbItems);
+
+        if (insertItemsError) {
+          throw insertItemsError;
+        }
+      }
+    } catch (err) {
+      console.error('Error updating operation (admin):', err);
+      this._adminOperations.set(previousAdminOps);
+      const message = err instanceof Error
+        ? err.message
+        : (typeof err === 'object' && err !== null && 'message' in err)
+          ? String((err as { message?: unknown }).message)
+          : 'Erreur lors de la modification de l\'opération.';
+      throw new Error(message);
+    }
+
+    return op;
+  }
+
+  /**
+   * Supprime une opération depuis la vue admin, quel que soit son propriétaire.
+   * Agit sur _adminOperations (et non _operations, propre à l'utilisateur connecté).
+   */
+  async adminDeleteOperation(id: string): Promise<boolean> {
+    const previousAdminOps = this._adminOperations();
+    const updated = previousAdminOps.filter(op => op.id !== id);
+    this._adminOperations.set(updated);
+
+    try {
+      const { error: itemsError } = await this.supabaseService.client
+        .from('operation_items')
+        .delete()
+        .eq('operation_id', id);
+
+      if (itemsError) {
+        throw itemsError;
+      }
+
+      const { error: opError } = await this.supabaseService.client
+        .from('operations')
+        .delete()
+        .eq('id', id);
+
+      if (opError) {
+        throw opError;
+      }
+    } catch (err) {
+      console.error('Error deleting operation (admin):', err);
+      this._adminOperations.set(previousAdminOps);
+      const message = err instanceof Error
+        ? err.message
+        : (typeof err === 'object' && err !== null && 'message' in err)
+          ? String((err as { message?: unknown }).message)
+          : 'Erreur lors de la suppression de l\'opération.';
+      throw new Error(message);
     }
 
     return true;

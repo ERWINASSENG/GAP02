@@ -185,4 +185,97 @@ export class ExcelExportService {
     const safeSiteName = summary.site.replace(/\s+/g, '_');
     XLSX.writeFile(wb, `Rapport_Mensuel_${safeSiteName}_${safeMonthName}.xlsx`);
   }
+
+  /**
+   * Exporte un ensemble de tableaux (groupés par type d'opération et site, choisis par
+   * l'admin) dans un seul classeur XLSX : un onglet par groupe sélectionné.
+   */
+  exportOperationGroupsToExcel(groups: { label: string; type: string; site: string; ops: Operation[] }[]): void {
+    if (groups.length === 0) return;
+
+    const wb = XLSX.utils.book_new();
+    const usedSheetNames = new Set<string>();
+
+    groups.forEach(group => {
+      const wsData: (string | number | undefined | null)[][] = [
+        ['PORTSYNC LOGISTICS - RAPPORT PAR TYPE D\'OPÉRATION'],
+        [`Type : ${group.type} | Site : ${group.site}`],
+        [],
+        [
+          'ID Opération',
+          'Date Opération',
+          'Heure',
+          'Collaborateur',
+          'N° DN / Camion',
+          'Produit',
+          'Quantité',
+          'Prix Unitaire (FCFA)',
+          'Montant (FCFA)',
+          'Détails / Notes'
+        ]
+      ];
+
+      let totalQte = 0;
+      let totalMontant = 0;
+
+      group.ops.forEach(op => {
+        if (op.items && op.items.length > 0) {
+          op.items.forEach(item => {
+            wsData.push([
+              op.id,
+              op.date,
+              op.heure,
+              op.collaborateur || '',
+              item.dn,
+              item.produit,
+              item.qte,
+              item.pu,
+              item.montant,
+              op.details || ''
+            ]);
+            totalQte += (item.qte || 0);
+            totalMontant += (item.montant || 0);
+          });
+        } else {
+          wsData.push([
+            op.id,
+            op.date,
+            op.heure,
+            op.collaborateur || '',
+            op.destination || 'N/A',
+            op.produit || 'N/A',
+            op.quantite || 0,
+            0,
+            0,
+            op.details || ''
+          ]);
+          totalQte += (op.quantite || 0);
+        }
+      });
+
+      wsData.push([]);
+      wsData.push(['TOTAL', '', '', '', '', '', totalQte, '', totalMontant, '']);
+
+      const ws = XLSX.utils.aoa_to_sheet(wsData);
+      ws['!cols'] = [
+        { wch: 15 }, { wch: 15 }, { wch: 10 }, { wch: 20 }, { wch: 20 },
+        { wch: 25 }, { wch: 12 }, { wch: 18 }, { wch: 18 }, { wch: 35 }
+      ];
+
+      // Les noms d'onglet Excel sont limités à 31 caractères et doivent être uniques
+      let sheetName = `${group.type}_${group.site}`.replace(/[\\/*?:[\]]/g, ' ').slice(0, 31).trim() || 'Groupe';
+      let suffix = 1;
+      const baseName = sheetName;
+      while (usedSheetNames.has(sheetName)) {
+        suffix += 1;
+        sheetName = `${baseName.slice(0, 28)}_${suffix}`;
+      }
+      usedSheetNames.add(sheetName);
+
+      XLSX.utils.book_append_sheet(wb, ws, sheetName);
+    });
+
+    const stamp = new Date().toISOString().split('T')[0];
+    XLSX.writeFile(wb, `Rapport_Admin_${stamp}.xlsx`);
+  }
 }

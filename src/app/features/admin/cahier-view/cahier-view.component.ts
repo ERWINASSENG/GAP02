@@ -1,15 +1,26 @@
-import { Component, inject, signal, OnInit } from '@angular/core';
+import { Component, inject, signal, computed, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { ReactiveFormsModule, FormGroup, FormControl, FormArray, Validators } from '@angular/forms';
 import { CahierService } from '../../../core/services/cahier.service';
 import { PdfExportService } from '../../../core/services/pdf-export.service';
 import { ExcelExportService } from '../../../core/services/excel-export.service';
-import { MonthlySummary } from '../../../shared/models/cahier.model';
+import { DocxExportService } from '../../../core/services/docx-export.service';
+import { MonthlySummary, Operation, OperationItem } from '../../../shared/models/cahier.model';
 import { AuthService } from '../../../core/services/auth.service';
 import { CreatedUser } from '../../../shared/models/auth.model';
 
+interface TypeSiteGroup {
+  key: string;
+  type: string;
+  site: string;
+  label: string;
+  ops: Operation[];
+  count: number;
+}
+
 @Component({
   selector: 'app-admin-cahier-view',
-  imports: [CommonModule],
+  imports: [CommonModule, ReactiveFormsModule],
   templateUrl: './cahier-view.component.html',
   styleUrl: './cahier-view.component.scss'
 })
@@ -17,14 +28,69 @@ export class AdminCahierViewComponent implements OnInit {
   private readonly cahierService = inject(CahierService);
   private readonly pdfExportService = inject(PdfExportService);
   private readonly excelExportService = inject(ExcelExportService);
+  private readonly docxExportService = inject(DocxExportService);
   private readonly authService = inject(AuthService);
 
   readonly summaries = this.cahierService.adminMonthlySummaries;
+
+  readonly sites = ['SCMC', 'TUSCANI', 'AFISA', 'AUTRE'];
+  readonly operationTypes = [
+    'Chargement', 'Déchargement', 'Surmontage', 'Transfert', 'Son',
+    'Chargement Wagon Blé', 'Chargement Wagon Farine', 'Reconditionnement', 'Nettoyage', 'Chargement Camions'
+  ];
+  readonly sonLevels = ['Faible', 'Moyen', 'Élevé'];
+  readonly frequences = ['Basse', 'Moyenne', 'Haute'];
 
   // Signals pour les utilisateurs créés par cet admin
   readonly createdUsers = signal<CreatedUser[]>([]);
   readonly isLoadingUsers = signal<boolean>(false);
   readonly errorUsers = signal<string>('');
+
+  // Regroupement par type d'opération + site, pour l'export ciblé
+  readonly groupedByTypeSite = computed<TypeSiteGroup[]>(() => {
+    const ops = this.cahierService.adminOperations().filter(op => !op.isDraft);
+    const groups: Record<string, Operation[]> = {};
+    ops.forEach(op => {
+      const key = `${op.type}|${op.site}`;
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(op);
+    });
+
+    return Object.keys(groups).sort().map(key => {
+      const [type, site] = key.split('|');
+      const groupOps = [...groups[key]].sort((a, b) =>
+        `${b.date}T${b.heure || ''}`.localeCompare(`${a.date}T${a.heure || ''}`)
+      );
+      return { key, type, site, label: `${type} — ${site}`, ops: groupOps, count: groupOps.length };
+    });
+  });
+
+  readonly selectedGroupKeys = signal<Set<string>>(new Set());
+  readonly hasSelection = computed(() => this.selectedGroupKeys().size > 0);
+
+  // --- Édition d'une opération ---
+  readonly editingOperation = signal<Operation | null>(null);
+  readonly isSavingEdit = signal<boolean>(false);
+  readonly editError = signal<string | null>(null);
+
+  readonly editForm = new FormGroup({
+    site: new FormControl<string>('', { nonNullable: true, validators: [Validators.required] }),
+    type: new FormControl<string>('', { nonNullable: true, validators: [Validators.required] }),
+    date: new FormControl<string>('', { nonNullable: true, validators: [Validators.required] }),
+    heure: new FormControl<string>('', { nonNullable: true, validators: [Validators.required] }),
+    details: new FormControl<string>(''),
+    sonLevel: new FormControl<string>('Moyen'),
+    frequence: new FormControl<string>('Basse'),
+    produit: new FormControl<string>(''),
+    destination: new FormControl<string>(''),
+    quantite: new FormControl<number | null>(null),
+    items: new FormArray<FormGroup>([])
+  });
+
+  // --- Suppression d'une opération ---
+  readonly operationToDelete = signal<string | null>(null);
+  readonly isDeleting = signal<boolean>(false);
+  readonly deleteError = signal<string | null>(null);
 
   ngOnInit() {
     this.loadCreatedUsers();
@@ -48,5 +114,185 @@ export class AdminCahierViewComponent implements OnInit {
 
   exportToExcel(summary: MonthlySummary) {
     this.excelExportService.exportMonthlySummaryToExcel(summary);
+  }
+
+  // --- Sélection de groupes type/site pour export ciblé ---
+
+  isGroupSelected(key: string): boolean {
+    return this.selectedGroupKeys().has(key);
+  }
+
+  toggleGroupSelection(key: string) {
+    const current = new Set(this.selectedGroupKeys());
+    if (current.has(key)) {
+      current.delete(key);
+    } else {
+      current.add(key);
+    }
+    this.selectedGroupKeys.set(current);
+  }
+
+  clearSelection() {
+    this.selectedGroupKeys.set(new Set());
+  }
+
+  private getSelectedGroups(): TypeSiteGroup[] {
+    const keys = this.selectedGroupKeys();
+    return this.groupedByTypeSite().filter(g => keys.has(g.key));
+  }
+
+  exportGroupToExcel(group: TypeSiteGroup) {
+    this.excelExportService.exportOperationGroupsToExcel([group]);
+  }
+
+  exportGroupToDocx(group: TypeSiteGroup) {
+    this.docxExportService.exportOperationGroupsToDocx([group]);
+  }
+
+  exportSelectionToExcel() {
+    const groups = this.getSelectedGroups();
+    if (groups.length === 0) return;
+    this.excelExportService.exportOperationGroupsToExcel(groups);
+  }
+
+  exportSelectionToDocx() {
+    const groups = this.getSelectedGroups();
+    if (groups.length === 0) return;
+    this.docxExportService.exportOperationGroupsToDocx(groups);
+  }
+
+  // --- Édition ---
+
+  get editItemsArray(): FormArray {
+    return this.editForm.get('items') as FormArray;
+  }
+
+  private createEditItemGroup(item?: Partial<OperationItem>): FormGroup {
+    return new FormGroup({
+      id: new FormControl<string | undefined>(item?.id),
+      dn: new FormControl<string>(item?.dn || '', { nonNullable: true }),
+      produit: new FormControl<string>(item?.produit || '', { nonNullable: true }),
+      qte: new FormControl<number>(item?.qte ?? 0, { nonNullable: true }),
+      pu: new FormControl<number>(item?.pu ?? 0, { nonNullable: true }),
+      montant: new FormControl<number>(item?.montant ?? 0, { nonNullable: true })
+    });
+  }
+
+  openEditModal(op: Operation) {
+    this.editError.set(null);
+    this.editingOperation.set(op);
+    this.editItemsArray.clear();
+    this.editForm.reset({
+      site: op.site,
+      type: op.type,
+      date: op.date,
+      heure: op.heure,
+      details: op.details || '',
+      sonLevel: op.sonLevel || 'Moyen',
+      frequence: op.frequence || 'Basse',
+      produit: op.produit || '',
+      destination: op.destination || '',
+      quantite: op.quantite ?? null
+    });
+    (op.items || []).forEach(item => this.editItemsArray.push(this.createEditItemGroup(item)));
+  }
+
+  closeEditModal() {
+    this.editingOperation.set(null);
+    this.editError.set(null);
+  }
+
+  addEditItem() {
+    this.editItemsArray.push(this.createEditItemGroup());
+  }
+
+  removeEditItem(index: number) {
+    this.editItemsArray.removeAt(index);
+  }
+
+  recalculateItemMontant(index: number) {
+    const group = this.editItemsArray.at(index);
+    const qte = Number(group.get('qte')?.value) || 0;
+    const pu = Number(group.get('pu')?.value) || 0;
+    group.get('montant')?.setValue(qte * pu);
+  }
+
+  async saveEdit() {
+    const op = this.editingOperation();
+    if (!op) return;
+
+    if (this.editForm.invalid) {
+      this.editForm.markAllAsTouched();
+      return;
+    }
+
+    this.isSavingEdit.set(true);
+    this.editError.set(null);
+
+    const val = this.editForm.getRawValue();
+    const items: OperationItem[] = this.editItemsArray.controls.map(ctrl => {
+      const v = ctrl.getRawValue();
+      return {
+        id: v.id,
+        date: val.date,
+        dn: v.dn || '',
+        produit: v.produit || '',
+        qte: Number(v.qte) || 0,
+        pu: Number(v.pu) || 0,
+        montant: Number(v.montant) || 0
+      };
+    });
+
+    const updatedOp: Operation = {
+      ...op,
+      site: val.site,
+      type: val.type as Operation['type'],
+      date: val.date,
+      heure: val.heure,
+      details: val.details || '',
+      sonLevel: val.sonLevel || 'Moyen',
+      frequence: val.frequence || 'Basse',
+      produit: val.produit || '',
+      destination: val.destination || '',
+      quantite: val.quantite ?? undefined,
+      items
+    };
+
+    try {
+      await this.cahierService.adminUpdateOperation(updatedOp);
+      this.editingOperation.set(null);
+    } catch (err) {
+      this.editError.set(err instanceof Error ? err.message : 'Erreur lors de la modification de l\'opération.');
+    } finally {
+      this.isSavingEdit.set(false);
+    }
+  }
+
+  // --- Suppression ---
+
+  confirmDelete(id: string) {
+    this.deleteError.set(null);
+    this.operationToDelete.set(id);
+  }
+
+  cancelDelete() {
+    this.operationToDelete.set(null);
+  }
+
+  async deleteOperationConfirmed() {
+    const id = this.operationToDelete();
+    if (!id) return;
+
+    this.isDeleting.set(true);
+    this.deleteError.set(null);
+
+    const ok = await this.cahierService.adminDeleteOperation(id);
+
+    this.isDeleting.set(false);
+    if (!ok) {
+      this.deleteError.set('La suppression a échoué. L\'opération est toujours présente.');
+      return;
+    }
+    this.operationToDelete.set(null);
   }
 }
