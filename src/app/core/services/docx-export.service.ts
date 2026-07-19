@@ -539,6 +539,167 @@ export class DocxExportService {
   }
 
   /**
+   * Exporte un ensemble de tableaux (groupés par type d'opération et site, choisis par
+   * l'admin) dans un seul document DOCX : une section titrée + un tableau par groupe.
+   */
+  exportOperationGroupsToDocx(groups: { label: string; type: string; site: string; ops: Operation[] }[]): void {
+    if (groups.length === 0) return;
+
+    const primaryColor = "0F172A";
+    const accentColor = "4F46E5";
+    const bodyChildren: (Paragraph | Table)[] = [];
+
+    bodyChildren.push(
+      new Paragraph({
+        children: [
+          new TextRun({
+            text: "PORTSYNC LOGISTICS - RAPPORT ADMINISTRATEUR PAR TYPE/SITE",
+            bold: true,
+            size: 26,
+            color: primaryColor,
+            font: "Arial"
+          })
+        ],
+        spacing: { before: 100, after: 300 }
+      })
+    );
+
+    groups.forEach((group, gIdx) => {
+      const isWagon = group.type.toLowerCase().includes('wagon');
+      const showDn = (group.type === 'Chargement' && (group.site === 'AFISA' || group.site === 'SCMC')) || isWagon;
+
+      bodyChildren.push(
+        new Paragraph({
+          children: [
+            new TextRun({
+              text: `${group.type.toUpperCase()} — ${group.site.toUpperCase()}`,
+              bold: true,
+              size: 20,
+              color: primaryColor,
+              font: "Arial"
+            })
+          ],
+          spacing: { before: gIdx === 0 ? 0 : 400, after: 150 }
+        })
+      );
+
+      const itemsWithMeta: MonthlyItemWithMeta[] = group.ops.flatMap(op =>
+        (op.items && op.items.length > 0) ? op.items.map(item => ({
+          originalDate: item.date || op.date,
+          originalTime: op.heure || '00:00',
+          dateStr: this.formatFrenchDate(item.date || op.date),
+          dn: item.dn || '-',
+          produit: item.produit || op.produit || '-',
+          qte: item.qte || 0,
+          pu: item.pu || 0,
+          montant: item.montant || 0
+        })) : [{
+          originalDate: op.date,
+          originalTime: op.heure || '00:00',
+          dateStr: this.formatFrenchDate(op.date),
+          dn: op.destination || '-',
+          produit: op.produit || '-',
+          qte: op.quantite || 0,
+          pu: 0,
+          montant: 0
+        }]
+      );
+
+      itemsWithMeta.sort((a, b) => {
+        const dateTimeA = `${a.originalDate}T${a.originalTime}`;
+        const dateTimeB = `${b.originalDate}T${b.originalTime}`;
+        return dateTimeA.localeCompare(dateTimeB);
+      });
+
+      let headers: string[];
+      let widths: number[];
+      if (group.type === 'Chargement Camions') {
+        headers = ['Date', 'Camions', 'Tonnage (t)', 'PU (FCFA)', 'Montant (FCFA)'];
+        widths = [20, 25, 18, 17, 20];
+      } else if (showDn) {
+        const dnLabel = isWagon ? 'N° Wagon' : 'DN / LTI / ISTI';
+        headers = ['Date', dnLabel, 'Produit', 'QTE', 'PU', 'Montant'];
+        widths = [18, 20, 24, 12, 11, 15];
+      } else {
+        headers = ['Date', 'Produit', 'QTE', 'PU', 'Montant'];
+        widths = [20, 32, 16, 14, 18];
+      }
+
+      const tableRows: TableRow[] = [
+        new TableRow({
+          children: headers.map((h, hIdx) => this.createCell(h, {
+            bold: true,
+            size: 18,
+            color: "FFFFFF",
+            fill: primaryColor,
+            widthPercent: widths[hIdx]
+          }))
+        })
+      ];
+
+      itemsWithMeta.forEach(item => {
+        const rowCells: TableCell[] = [
+          this.createCell(item.dateStr, { size: 17, widthPercent: widths[0] })
+        ];
+        let dataIndex = 1;
+        if (showDn || group.type === 'Chargement Camions') {
+          rowCells.push(this.createCell(item.dn, { bold: true, size: 17, widthPercent: widths[dataIndex++] }));
+        }
+        if (group.type !== 'Chargement Camions') {
+          rowCells.push(this.createCell(item.produit, { align: AlignmentType.LEFT, size: 17, widthPercent: widths[dataIndex++] }));
+        }
+        rowCells.push(this.createCell(item.qte.toLocaleString('fr-FR'), { size: 17, widthPercent: widths[dataIndex++] }));
+        rowCells.push(this.createCell(item.pu.toLocaleString('fr-FR'), { size: 17, color: "64748B", widthPercent: widths[dataIndex++] }));
+        rowCells.push(this.createCell(item.montant.toLocaleString('fr-FR'), { bold: true, size: 17, color: accentColor, align: AlignmentType.RIGHT, widthPercent: widths[dataIndex++] }));
+        tableRows.push(new TableRow({ children: rowCells }));
+      });
+
+      const totalQte = itemsWithMeta.reduce((sum, item) => sum + item.qte, 0);
+      const totalMontant = itemsWithMeta.reduce((sum, item) => sum + item.montant, 0);
+      const footerCells: TableCell[] = [];
+      if (group.type === 'Chargement Camions') {
+        footerCells.push(this.createCell("TOTAL", { bold: true, size: 18, colspan: 2, align: AlignmentType.RIGHT, fill: "F1F5F9" }));
+        footerCells.push(this.createCell(totalQte.toLocaleString('fr-FR'), { bold: true, size: 18, fill: "F1F5F9" }));
+        footerCells.push(this.createCell("", { fill: "F1F5F9" }));
+        footerCells.push(this.createCell(totalMontant.toLocaleString('fr-FR'), { bold: true, size: 18, color: accentColor, align: AlignmentType.RIGHT, fill: "F1F5F9" }));
+      } else if (showDn) {
+        footerCells.push(this.createCell("TOTAL", { bold: true, size: 18, colspan: 4, align: AlignmentType.RIGHT, fill: "F1F5F9" }));
+        footerCells.push(this.createCell(totalMontant.toLocaleString('fr-FR'), { bold: true, size: 18, color: accentColor, align: AlignmentType.RIGHT, fill: "F1F5F9" }));
+      } else {
+        footerCells.push(this.createCell("TOTAL", { bold: true, size: 18, colspan: 3, align: AlignmentType.RIGHT, fill: "F1F5F9" }));
+        footerCells.push(this.createCell(totalMontant.toLocaleString('fr-FR'), { bold: true, size: 18, color: accentColor, align: AlignmentType.RIGHT, fill: "F1F5F9" }));
+      }
+      tableRows.push(new TableRow({ children: footerCells }));
+
+      bodyChildren.push(new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: tableRows }));
+      bodyChildren.push(new Paragraph({ text: "", spacing: { before: 100, after: 100 } }));
+    });
+
+    const exportDate = new Date().toLocaleString('fr-FR');
+    const footerParagraph = new Paragraph({
+      children: [
+        new TextRun({
+          text: `Rapport généré le ${exportDate} via PortSync Logistics App.`,
+          size: 15,
+          color: "94A3B8",
+          font: "Arial"
+        })
+      ],
+      alignment: AlignmentType.LEFT
+    });
+
+    const doc = new Document({
+      sections: [{
+        children: bodyChildren,
+        footers: { default: new Footer({ children: [footerParagraph] }) }
+      }]
+    });
+
+    const stamp = new Date().toISOString().split('T')[0];
+    this.downloadBlob(doc, `Rapport_Admin_${stamp}.docx`);
+  }
+
+  /**
    * Helper pour regrouper les opérations par type (identique au computed de cahier.component)
    */
   private getGroupedOperations(summary: MonthlySummary) {
