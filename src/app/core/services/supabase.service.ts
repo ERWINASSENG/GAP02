@@ -30,23 +30,6 @@ export class SupabaseService {
   }
 
   /**
-   * Inscription d'un nouvel utilisateur
-   */
-  async signUp(email: string, password: string, displayName: string, role: 'admin' | 'user' = 'user'): Promise<AuthResponse> {
-    return await this.supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          display_name: displayName,
-          role: role,
-          avatar_url: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150'
-        }
-      }
-    });
-  }
-
-  /**
    * Connexion d'un utilisateur
    */
   async signIn(email: string, password: string): Promise<AuthResponse> {
