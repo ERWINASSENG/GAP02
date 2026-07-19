@@ -1,0 +1,82 @@
+From fb471b5640b08ffde5c0edc43fdec5799bd87a99 Mon Sep 17 00:00:00 2001
+From: Erwin Alberic Asseng <erwin.alberic@gmail.com>
+Date: Sun, 19 Jul 2026 15:37:13 +0000
+Subject: [PATCH] fix(admin): rendre la vue admin responsive (mobile)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+- Formulaire de modification : grille site/type/date/... passe en
+  1 colonne sur mobile (grid-cols-1 sm:grid-cols-2 au lieu de grid-cols-2).
+- Lignes d'items (DN/Produit/Qté/PU/Montant) : grid-cols-12 illisible sur
+  petit écran -> grid-cols-2 sm:grid-cols-12, bouton "Retirer la ligne"
+  explicite au lieu d'une icône seule trop petite au toucher.
+- Barre flottante d'export groupé : largeur contrainte
+  (calc(100%-2rem) sur mobile, max-w-md), flex-wrap pour éviter tout
+  débordement horizontal sur petits écrans.
+- Padding racine aligné sur le reste de l'app (p-4 sm:p-6, comme
+  cahier.component.html) au lieu d'un p-6 fixe.
+Le reste de l'application (page de saisie, sidebar/layout) utilisait déjà
+des classes Tailwind responsives cohérentes (sm:/md:/lg:, tiroir mobile
+avec overlay) ; seule la vue admin ajoutée précédemment n'était pas encore
+adaptée au mobile.
+---
+ .../cahier-view/cahier-view.component.html    | 24 ++++++++++---------
+ 1 file changed, 13 insertions(+), 11 deletions(-)
+
+diff --git a/src/app/features/admin/cahier-view/cahier-view.component.html b/src/app/features/admin/cahier-view/cahier-view.component.html
+index 2eae53e..4e7fe48 100644
+--- a/src/app/features/admin/cahier-view/cahier-view.component.html
++++ b/src/app/features/admin/cahier-view/cahier-view.component.html
+@@ -1,4 +1,4 @@
+-<div class="p-6 max-w-7xl mx-auto space-y-6">
++<div class="p-4 sm:p-6 max-w-7xl mx-auto space-y-6">
+   <header class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+     <div>
+       <h1 class="text-3xl font-bold text-slate-900 tracking-tight">Vue Administrateur</h1>
+@@ -251,8 +251,8 @@
+ 
+   <!-- Barre flottante de sélection multiple -->
+   @if (hasSelection()) {
+-    <div class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-900 text-white rounded-2xl shadow-2xl px-5 py-3 flex items-center gap-4 z-40">
+-      <span class="text-sm font-medium">{{ selectedGroupKeys().size }} tableau(x) sélectionné(s)</span>
++    <div class="fixed bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] sm:w-auto max-w-md bg-slate-900 text-white rounded-2xl shadow-2xl px-4 py-3 sm:px-5 flex flex-wrap items-center justify-center gap-2 sm:gap-4 z-40">
++      <span class="text-xs sm:text-sm font-medium w-full sm:w-auto text-center sm:text-left">{{ selectedGroupKeys().size }} tableau(x) sélectionné(s)</span>
+       <button
+         (click)="exportSelectionToExcel()"
+         class="px-3 py-1.5 text-xs font-semibold bg-emerald-500 hover:bg-emerald-400 rounded-lg transition-colors">
+@@ -285,7 +285,7 @@
+             <div class="p-3 bg-rose-50 text-rose-600 rounded-xl text-sm">{{ editError() }}</div>
+           }
+ 
+-          <div class="grid grid-cols-2 gap-4">
++          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+             <div>
+               <label class="block text-xs font-medium text-slate-500 mb-1">Site</label>
+               <select formControlName="site" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm">
+@@ -348,13 +348,15 @@
+ 
+             <div formArrayName="items" class="space-y-2">
+               @for (itemGroup of editItemsArray.controls; track $index) {
+-                <div [formGroupName]="$index" class="grid grid-cols-12 gap-2 items-center bg-slate-50 rounded-lg p-2">
+-                  <input formControlName="dn" placeholder="DN" class="col-span-3 rounded-md border border-slate-200 px-2 py-1 text-xs">
+-                  <input formControlName="produit" placeholder="Produit" class="col-span-3 rounded-md border border-slate-200 px-2 py-1 text-xs">
+-                  <input type="number" formControlName="qte" placeholder="Qté" (input)="recalculateItemMontant($index)" class="col-span-2 rounded-md border border-slate-200 px-2 py-1 text-xs">
+-                  <input type="number" formControlName="pu" placeholder="PU" (input)="recalculateItemMontant($index)" class="col-span-2 rounded-md border border-slate-200 px-2 py-1 text-xs">
+-                  <input type="number" formControlName="montant" placeholder="Montant" class="col-span-1 rounded-md border border-slate-200 px-2 py-1 text-xs">
+-                  <button type="button" (click)="removeEditItem($index)" class="col-span-1 text-rose-500 hover:text-rose-700 text-xs">✕</button>
++                <div [formGroupName]="$index" class="grid grid-cols-2 sm:grid-cols-12 gap-2 items-center bg-slate-50 rounded-lg p-2">
++                  <input formControlName="dn" placeholder="DN" class="sm:col-span-3 rounded-md border border-slate-200 px-2 py-1 text-xs">
++                  <input formControlName="produit" placeholder="Produit" class="sm:col-span-3 rounded-md border border-slate-200 px-2 py-1 text-xs">
++                  <input type="number" formControlName="qte" placeholder="Qté" (input)="recalculateItemMontant($index)" class="sm:col-span-2 rounded-md border border-slate-200 px-2 py-1 text-xs">
++                  <input type="number" formControlName="pu" placeholder="PU" (input)="recalculateItemMontant($index)" class="sm:col-span-2 rounded-md border border-slate-200 px-2 py-1 text-xs">
++                  <input type="number" formControlName="montant" placeholder="Montant" class="col-span-2 sm:col-span-1 rounded-md border border-slate-200 px-2 py-1 text-xs">
++                  <button type="button" (click)="removeEditItem($index)" class="col-span-2 sm:col-span-1 text-rose-500 hover:text-rose-700 text-xs py-1 border border-rose-100 rounded-md sm:border-0 sm:py-0">
++                    Retirer la ligne
++                  </button>
+                 </div>
+               } @empty {
+                 <p class="text-xs text-slate-400 italic">Aucun item pour cette opération.</p>
+-- 
+2.43.0
+

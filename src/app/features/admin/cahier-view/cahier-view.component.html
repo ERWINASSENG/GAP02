@@ -310,32 +310,6 @@
               <label class="block text-xs font-medium text-slate-500 mb-1">Heure</label>
               <input type="time" formControlName="heure" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm">
             </div>
-            <div>
-              <label class="block text-xs font-medium text-slate-500 mb-1">Niveau sonore</label>
-              <select formControlName="sonLevel" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm">
-                @for (lvl of sonLevels; track lvl) {
-                  <option [value]="lvl">{{ lvl }}</option>
-                }
-              </select>
-            </div>
-            <div>
-              <label class="block text-xs font-medium text-slate-500 mb-1">Fréquence</label>
-              <select formControlName="frequence" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm">
-                @for (f of frequences; track f) {
-                  <option [value]="f">{{ f }}</option>
-                }
-              </select>
-            </div>
-          </div>
-
-          <div>
-            <label class="block text-xs font-medium text-slate-500 mb-1">Destination (si transfert)</label>
-            <input type="text" formControlName="destination" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm">
-          </div>
-
-          <div>
-            <label class="block text-xs font-medium text-slate-500 mb-1">Détails / Notes</label>
-            <textarea formControlName="details" rows="2" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"></textarea>
           </div>
 
           <div class="space-y-2">
