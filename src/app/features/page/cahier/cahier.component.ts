@@ -135,9 +135,13 @@ export class CahierComponent implements OnInit {
   readonly productSuggestions = signal<string[]>([]);
   readonly activeProductRowIndex = signal<number | null>(null);
 
-  readonly sonLevels = ['Faible', 'Moyen', 'Élevé'];
-  readonly frequences = ['Basse', 'Moyenne', 'Haute'];
+  private normalizeProductString(s: string | null | undefined): string {
+    return (s || '').toString().replace(/\s+/g, ' ').trim().toUpperCase();
+  }
 
+  private findProductMapKeyByNormalized(normalized: string): string | undefined {
+    return Array.from(this.productPriceMap.keys()).find(k => this.normalizeProductString(k) === normalized);
+  }
   // Form group definition
   readonly operationForm = new FormGroup({
     site: new FormControl<string>('', { validators: [Validators.required], nonNullable: true }),
@@ -247,7 +251,7 @@ export class CahierComponent implements OnInit {
     });
 
     const updateProductSuggestions = (value: string) => {
-      const query = value.trim().toUpperCase();
+      const query = this.normalizeProductString(value);
       if (!query) {
         this.productSuggestions.set([]);
         this.activeProductRowIndex.set(null);
@@ -255,7 +259,7 @@ export class CahierComponent implements OnInit {
       }
 
       const suggestions = Array.from(this.productPriceMap.keys())
-        .filter(key => key.includes(query));
+        .filter(key => this.normalizeProductString(key).includes(query));
 
       this.productSuggestions.set(suggestions.slice(0, 6));
       this.activeProductRowIndex.set(this.itemsFormArray.controls.indexOf(group));
@@ -273,14 +277,17 @@ export class CahierComponent implements OnInit {
         return;
       }
 
-      const normalized = productValue.trim().toUpperCase();
+      const normalized = this.normalizeProductString(productValue);
       const isWagonType = ['Chargement Wagon Blé', 'Chargement Wagon Farine'].includes(currentType);
       const isCamionTuscany = normalized === 'CAMION TUSCANY';
 
+      // Find a matching product key by normalized form
+      const matchedKey = this.findProductMapKeyByNormalized(normalized);
+
       // Apply automatic PU for known products, except wagon types.
       // CAMION TUSCANY is explicitly allowed for Chargement Camions.
-      if (this.productPriceMap.has(normalized) && (!isWagonType || isCamionTuscany)) {
-        applyProductSelection(normalized);
+      if (matchedKey && (!isWagonType || isCamionTuscany)) {
+        applyProductSelection(matchedKey);
         return;
       }
 
