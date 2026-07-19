@@ -1,7 +1,6 @@
 import { ChangeDetectionStrategy, Component, inject, signal, computed, OnInit, DestroyRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormGroup, FormControl, FormArray, Validators } from '@angular/forms';
-import { MatIconModule } from '@angular/material/icon';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CahierService } from '../../../core/services/cahier.service';
 import { AuthService } from '../../../core/services/auth.service';
@@ -26,7 +25,7 @@ interface OperationFormValue {
 
 @Component({
   selector: 'app-cahier',
-  imports: [CommonModule, ReactiveFormsModule, MatIconModule],
+  imports: [CommonModule, ReactiveFormsModule],
   templateUrl: './cahier.component.html',
   styleUrl: './cahier.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
