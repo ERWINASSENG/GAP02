@@ -62,10 +62,14 @@ export class AuthService {
       email: user.email || '',
       username: user.email?.split('@')[0] || 'user',
       displayName: metadata['display_name'] || metadata['fullName'] || 'Collaborateur',
-      role: appMetadata['role'] || metadata['role'] || 'user',
+      // Sécurité : le rôle et le site assigné ne doivent JAMAIS venir de user_metadata,
+      // qui est modifiable par l'utilisateur lui-même (supabase.auth.updateUser). Seul
+      // app_metadata (modifiable uniquement via l'API admin / service_role) fait foi ici,
+      // exactement comme le vérifient déjà la RLS et server.ts.
+      role: appMetadata['role'] || 'user',
       avatarUrl: metadata['avatar_url'] || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150',
-      assignedSiteId: appMetadata['assignedSiteId'] || metadata['assignedSiteId'] || undefined,
-      assignedSiteName: appMetadata['assignedSiteName'] || metadata['assignedSiteName'] || undefined
+      assignedSiteId: appMetadata['assignedSiteId'] || undefined,
+      assignedSiteName: appMetadata['assignedSiteName'] || undefined
     };
     this.currentUserSignal.set(portUser);
   }
@@ -240,4 +244,3 @@ export class AuthService {
     return allowedRoles.includes(user.role);
   }
 }
-
