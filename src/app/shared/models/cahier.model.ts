@@ -20,10 +20,27 @@ export interface WorkWeek {
   user_id?: string;
 }
 
+export const OPERATION_TYPES = [
+  'Chargement',
+  'Déchargement',
+  'Surmontage',
+  'Transfert',
+  'Son',
+  'Chargement des wagons',
+  'Chargement wagons',
+  'Chargement Wagon Blé',
+  'Chargement Wagon Farine',
+  'Reconditionnement',
+  'Nettoyage',
+  'Chargement Camions'
+] as const;
+
+export type OperationType = (typeof OPERATION_TYPES)[number];
+
 export interface Operation {
   id: string;
   site: string;
-  type: 'Chargement' | 'Déchargement' | 'Surmontage' | 'Transfert' | 'Son' | 'Chargement des wagons' | 'Chargement wagons' | 'Chargement Wagon Blé' | 'Chargement Wagon Farine' | 'Reconditionnement' | 'Nettoyage' | 'Chargement Camions';
+  type: OperationType;
   date: string;
   heure: string;
   details?: string;

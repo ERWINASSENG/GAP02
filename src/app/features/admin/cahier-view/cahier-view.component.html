@@ -306,34 +306,34 @@
 
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label class="block text-xs font-medium text-slate-500 mb-1">Site</label>
-              <select formControlName="site" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm">
+              <label for="edit-site" class="block text-xs font-medium text-slate-500 mb-1">Site</label>
+              <select id="edit-site" formControlName="site" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm">
                 @for (s of sites; track s) {
                   <option [value]="s">{{ s }}</option>
                 }
               </select>
             </div>
             <div>
-              <label class="block text-xs font-medium text-slate-500 mb-1">Type d'opération</label>
-              <select formControlName="type" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm">
+              <label for="edit-type" class="block text-xs font-medium text-slate-500 mb-1">Type d'opération</label>
+              <select id="edit-type" formControlName="type" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm">
                 @for (t of operationTypes; track t) {
                   <option [value]="t">{{ t }}</option>
                 }
               </select>
             </div>
             <div>
-              <label class="block text-xs font-medium text-slate-500 mb-1">Date</label>
-              <input type="date" formControlName="date" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm">
+              <label for="edit-date" class="block text-xs font-medium text-slate-500 mb-1">Date</label>
+              <input id="edit-date" type="date" formControlName="date" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm">
             </div>
             <div>
-              <label class="block text-xs font-medium text-slate-500 mb-1">Heure</label>
-              <input type="time" formControlName="heure" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm">
+              <label for="edit-heure" class="block text-xs font-medium text-slate-500 mb-1">Heure</label>
+              <input id="edit-heure" type="time" formControlName="heure" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm">
             </div>
           </div>
 
           <div class="space-y-2">
             <div class="flex items-center justify-between">
-              <label class="block text-xs font-medium text-slate-500">Lignes de détail</label>
+              <div class="block text-xs font-medium text-slate-500">Lignes de détail</div>
               <button type="button" (click)="addEditItem()" class="text-xs font-medium text-indigo-600 hover:text-indigo-700">
                 + Ajouter une ligne
               </button>

@@ -243,8 +243,10 @@ app.use((req, res) => {
 /**
  * Global Error Handler
  */
-app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
-  console.error('Server error:', err);
+app.use((err: unknown, req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  void _next;
+  const error = err instanceof Error ? err : new Error('Unknown server error');
+  console.error('Server error:', error);
   res.status(500).send('Internal Server Error');
 });
 

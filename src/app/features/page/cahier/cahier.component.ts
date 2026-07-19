@@ -7,7 +7,7 @@ import { AuthService } from '../../../core/services/auth.service';
 import { PdfExportService } from '../../../core/services/pdf-export.service';
 import { DocxExportService } from '../../../core/services/docx-export.service';
 import { ExcelExportService } from '../../../core/services/excel-export.service';
-import { Operation, MonthlySummary, OperationItem, WorkWeek } from '../../../shared/models/cahier.model';
+import { Operation, MonthlySummary, OperationItem, WorkWeek, OPERATION_TYPES } from '../../../shared/models/cahier.model';
 
 interface OperationFormValue {
   site?: string;
@@ -106,10 +106,7 @@ export class CahierComponent implements OnInit {
 
   // Available options
   readonly sites = ['SCMC', 'TUSCANI', 'AFISA', 'AUTRE'];
-  readonly operationTypes = [
-    'Chargement', 'Déchargement', 'Surmontage', 'Transfert', 'Son',
-    'Chargement Wagon Blé', 'Chargement Wagon Farine', 'Reconditionnement', 'Nettoyage', 'Chargement Camions'
-  ] as const;
+  readonly operationTypes = OPERATION_TYPES;
   readonly filteredOperationTypes = computed<string[]>(() => {
     const site = this.formValue().site;
     if (site === 'TUSCANI') {

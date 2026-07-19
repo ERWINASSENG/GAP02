@@ -1,0 +1,10 @@
+C:\Mes Sites Web\GAP02\src\app\app.config.server.ts
+C:\Mes Sites Web\GAP02\src\app\app.spec.ts
+C:\Mes Sites Web\GAP02\src\app\features\admin\cahier-view\cahier-view.component.spec.ts
+C:\Mes Sites Web\GAP02\src\app\features\dashboard\dashboard.component.spec.ts
+C:\Mes Sites Web\GAP02\src\app\features\page\cahier\cahier.component.spec.ts
+C:\Mes Sites Web\GAP02\src\app\features\page\login\login.component.spec.ts
+C:\Mes Sites Web\GAP02\src\app\features\page\register\register.component.spec.ts
+C:\Mes Sites Web\GAP02\src\app\features\page\reset\reset.component.spec.ts
+C:\Mes Sites Web\GAP02\src\app\features\protected\layout.spec.ts
+C:\Mes Sites Web\GAP02\src\app\shared\models\port.model.ts
