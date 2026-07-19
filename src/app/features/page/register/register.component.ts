@@ -1,13 +1,12 @@
 import {ChangeDetectionStrategy, Component, inject, signal} from '@angular/core';
 import {Router, RouterLink} from '@angular/router';
 import {FormBuilder, ReactiveFormsModule, Validators} from '@angular/forms';
-import {MatIconModule} from '@angular/material/icon';
 import {AuthService} from '../../../core/services/auth.service';
 
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-register',
-  imports: [ReactiveFormsModule, RouterLink, MatIconModule],
+  imports: [ReactiveFormsModule, RouterLink],
   templateUrl: './register.component.html',
   styleUrl: './register.component.scss'
 })
