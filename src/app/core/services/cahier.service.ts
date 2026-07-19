@@ -227,7 +227,7 @@ export class CahierService {
     if (!this.isBrowser) return;
 
     const user = this.authService.currentUser();
-    if (user?.role !== 'admin' || !user?.assignedSiteName) {
+    if (user?.role !== 'admin') {
       this._adminOperations.set([]);
       return;
     }
