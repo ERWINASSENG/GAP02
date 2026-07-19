@@ -4,7 +4,7 @@
     <!-- Aucun site spécifié : Affichage d'un écran d'accès restreint poli et professionnel -->
     <div class="flex flex-col items-center justify-center py-16 px-4 text-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-xs space-y-5 animate-fade-in" id="no-site-error-container">
       <div class="w-16 h-16 rounded-2xl bg-amber-500/10 dark:bg-amber-500/5 flex items-center justify-center text-amber-500" id="no-site-icon">
-        <mat-icon class="!text-[32px] !h-8 !w-8 flex items-center justify-center">lock_person</mat-icon>
+        
       </div>
       
       <div class="max-w-md space-y-2">
@@ -19,7 +19,7 @@
 
       <div class="pt-2">
         <div class="inline-flex items-center gap-2 px-3 py-1.5 bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-500 dark:text-slate-400 font-mono">
-          <mat-icon class="!text-[14px] !h-3.5 !w-3.5 flex items-center justify-center text-slate-400">info</mat-icon>
+          
           <span>ID de session : {{ authService.currentUser()?.id }}</span>
         </div>
       </div>
@@ -39,7 +39,7 @@
             class="p-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg transition-all cursor-pointer border border-slate-200 dark:border-slate-700 flex items-center justify-center focus:outline-hidden disabled:opacity-50 disabled:cursor-not-allowed"
             aria-label="Retourner à la liste"
           >
-            <mat-icon class="!text-[18px] !h-4.5 !w-4.5 flex items-center justify-center">arrow_back</mat-icon>
+            
           </button>
           <div>
             <h1 class="text-lg font-bold text-slate-900 dark:text-white tracking-tight">
@@ -76,10 +76,10 @@
                           'bg-indigo-50 border-indigo-300 text-indigo-700 dark:bg-indigo-950/40 dark:border-indigo-500/60 dark:text-indigo-300 ring-2 ring-indigo-500/20': operationForm.value.site === siteOption,
                           'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300': operationForm.value.site !== siteOption
                         }">
-                        <mat-icon class="text-slate-400 !text-[16px] !h-4 !w-4 flex items-center justify-center">place</mat-icon>
+                        
                         <span>{{ siteOption }}</span>
                         @if (operationForm.value.site === siteOption) {
-                          <mat-icon class="text-indigo-600 dark:text-indigo-400 !text-[14px] !h-3.5 !w-3.5 flex items-center justify-center">check_circle</mat-icon>
+                          
                         }
                       </button>
                     }
@@ -105,21 +105,10 @@
                           'bg-indigo-50 border-indigo-300 text-indigo-700 dark:bg-indigo-950/40 dark:border-indigo-500/60 dark:text-indigo-300 ring-2 ring-indigo-500/20': operationForm.value.type === typeOption,
                           'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300': operationForm.value.type !== typeOption
                         }">
-                        <mat-icon class="text-slate-400 !text-[16px] !h-4 !w-4 flex items-center justify-center">
-                          {{ 
-                            typeOption === 'Chargement' ? 'unarchive' :
-                            typeOption === 'Déchargement' ? 'archive' :
-                            typeOption === 'Surmontage' ? 'layers' :
-                            typeOption === 'Transfert' ? 'local_shipping' : 
-                            typeOption === 'Chargement des wagons' || typeOption === 'Chargement Wagon Blé' || typeOption === 'Chargement Wagon Farine' ? 'train' :
-                            typeOption === 'Chargement wagons' ? 'train' :
-                            typeOption === 'Reconditionnement' ? 'sync' :
-                            typeOption === 'Nettoyage' ? 'cleaning_services' : 'grain'
-                          }}
-                        </mat-icon>
+                        
                         <span>{{ typeOption }}</span>
                         @if (operationForm.value.type === typeOption) {
-                          <mat-icon class="text-indigo-600 dark:text-indigo-400 !text-[14px] !h-3.5 !w-3.5 flex items-center justify-center">check_circle</mat-icon>
+                          
                         }
                       </button>
                     }
@@ -143,7 +132,7 @@
                         }"
                         id="btn-wagon-ble"
                       >
-                        <mat-icon class="text-amber-500 !text-lg !h-5 !w-5 flex items-center justify-center">grass</mat-icon>
+                        
                         <span>Blé</span>
                       </button>
                       <button 
@@ -156,7 +145,7 @@
                         }"
                         id="btn-wagon-farine"
                       >
-                        <mat-icon class="text-amber-300 !text-lg !h-5 !w-5 flex items-center justify-center">cookie</mat-icon>
+                        
                         <span>Farine</span>
                       </button>
                     </div>
@@ -172,7 +161,7 @@
                 <!-- Blocage de semaine d'intervention non clôturée -->
                 @if (dateValidationWarning()?.allowed === false) {
                   <div class="p-4 bg-amber-500/10 border border-amber-500/20 text-amber-800 dark:text-amber-400 rounded-2xl flex items-start gap-3 animate-fade-in" id="wizard-blocking-warning">
-                    <mat-icon class="text-amber-600 dark:text-amber-400 shrink-0">lock</mat-icon>
+                    
                     <div class="space-y-1">
                       <p class="text-sm font-bold">Semaine de travail active non clôturée</p>
                       <p class="text-xs leading-relaxed">
@@ -186,7 +175,7 @@
                           [title]="!canCloseWeek(dateValidationWarning()?.activeWeek) ? 'La semaine n\'est pas encore terminée' : ''"
                           class="px-3 py-1 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-bold rounded-lg shadow-xs transition-all cursor-pointer flex items-center gap-1"
                         >
-                          <mat-icon class="!text-xs !h-3.5 !w-3.5">lock_open</mat-icon>
+                          
                           <span>Clôturer la semaine en cours</span>
                         </button>
                       </div>
@@ -202,7 +191,7 @@
                       (click)="addItemRow()"
                       class="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 text-xs font-semibold rounded-xl transition-all cursor-pointer border border-indigo-200/50 dark:border-indigo-800/40 focus:outline-hidden"
                     >
-                      <mat-icon class="text-xs leading-none h-3.5 w-3.5">add</mat-icon>
+                      
                       <span>Ajouter une ligne</span>
                     </button>
                   </div>
@@ -416,7 +405,7 @@
                                 class="p-2 text-slate-400 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all cursor-pointer inline-flex items-center justify-center focus:outline-hidden"
                                 title="Supprimer cette ligne"
                               >
-                                <mat-icon class="text-base">close</mat-icon>
+                                
                               </button>
                             }
                           </td>
@@ -504,7 +493,7 @@
                 [disabled]="isSaving()"
                 class="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs sm:text-sm font-semibold rounded-xl transition-all cursor-pointer border border-slate-200 dark:border-slate-700 flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <mat-icon class="text-sm leading-none h-4 w-4">arrow_back</mat-icon>
+                
                 <span>Précédent</span>
               </button>
               <div></div>
@@ -515,7 +504,7 @@
                 [disabled]="isSaving()"
                 class="px-2 py-2 sm:px-3 sm:py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-[10px] sm:text-[11px] font-bold rounded-lg transition-all cursor-pointer border border-slate-200 dark:border-slate-700 flex items-center gap-1 shadow-xs hover:shadow-sm shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <mat-icon class="text-[14px] leading-none h-4 w-4 flex items-center justify-center">arrow_back</mat-icon>
+                
                 <span class="hidden sm:inline">Précédent</span>
               </button>
               <div class="flex flex-wrap items-center gap-1 sm:gap-2 ml-auto">
@@ -532,7 +521,7 @@
                     </svg>
                     <span>Enregistrement...</span>
                   } @else {
-                    <mat-icon class="text-[14px] leading-none h-4 w-4 flex items-center justify-center">check_circle</mat-icon>
+                    
                     <span>Enregistrer</span>
                   }
                 </button>
@@ -561,7 +550,7 @@
         class="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white text-sm font-semibold rounded-xl transition-all cursor-pointer shadow-sm hover:shadow-md focus:outline-hidden"
         id="btn-new-operation"
       >
-        <mat-icon class="text-sm leading-none h-4 w-4">add</mat-icon>
+        
         <span>Nouvelle opération</span>
       </button>
     </div>
@@ -575,7 +564,7 @@
         <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-5 space-y-4 shadow-xs" id="weekly-status-section">
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-2 text-slate-900 dark:text-white font-bold text-sm">
-              <mat-icon class="!text-[18px] !h-4.5 !w-4.5 flex items-center justify-center text-indigo-500">date_range</mat-icon>
+              
               <span>Suivi des semaines de travail actives (6 jours)</span>
             </div>
           </div>
@@ -628,7 +617,7 @@
                     [title]="!canCloseWeek(activeWeek) ? 'La semaine n\'est pas encore terminée' : ''"
                     class="w-full flex items-center justify-center gap-1 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-bold rounded-lg transition-all shadow-xs border border-transparent"
                   >
-                    <mat-icon class="!text-[14px] !h-3.5 !w-3.5 flex items-center justify-center">lock</mat-icon>
+                    
                     <span>Clôturer la semaine</span>
                   </button>
                 }
@@ -641,7 +630,7 @@
         @if (cahierService.drafts().length > 0) {
           <div class="bg-amber-500/5 border border-amber-500/20 rounded-2xl p-4 sm:p-5 space-y-3" id="drafts-section">
             <div class="flex items-center gap-2 text-amber-800 dark:text-amber-400 font-bold text-sm">
-              <mat-icon class="!text-[18px] !h-4.5 !w-4.5 flex items-center justify-center">edit_note</mat-icon>
+              
               <span>Brouillons en cours ({{ cahierService.drafts().length }})</span>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -650,7 +639,7 @@
                   <div class="space-y-1">
                     <div class="flex justify-between items-start gap-2">
                       <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-[10px] font-semibold text-slate-700 dark:text-slate-300">
-                        <mat-icon class="!text-[12px] !h-3 !w-3 flex items-center justify-center text-slate-400">place</mat-icon>
+                        
                         {{ draft.site || 'Site non défini' }}
                       </span>
                       <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400">
@@ -658,17 +647,7 @@
                       </span>
                     </div>
                     <h4 class="text-sm font-bold text-slate-800 dark:text-white flex items-center gap-1.5 mt-2">
-                      <mat-icon class="!text-[14px] !h-3.5 !w-3.5 flex items-center justify-center text-slate-400">
-                        {{ 
-                          (draft.type === 'Chargement' || draft.type === 'Chargement Camions') ? 'unarchive' :
-                          draft.type === 'Déchargement' ? 'archive' :
-                          draft.type === 'Surmontage' ? 'layers' :
-                          draft.type === 'Transfert' ? 'local_shipping' : 
-                          (draft.type === 'Chargement des wagons' || draft.type === 'Chargement wagons') ? 'train' :
-                          draft.type === 'Reconditionnement' ? 'sync' :
-                          draft.type === 'Nettoyage' ? 'cleaning_services' : 'grain'
-                        }}
-                      </mat-icon>
+                      
                       {{ draft.type || 'Type non défini' }}
                     </h4>
                     <p class="text-[11px] text-slate-500 dark:text-slate-400 font-mono">
@@ -686,14 +665,14 @@
                       class="p-1 text-slate-400 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all cursor-pointer flex items-center justify-center"
                       title="Supprimer ce brouillon"
                     >
-                      <mat-icon class="!text-[16px] !h-4 !w-4">delete</mat-icon>
+                      
                     </button>
                     <button 
                       (click)="editDraft(draft)"
                       class="inline-flex items-center gap-1 px-3 py-1 bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold rounded-lg transition-all cursor-pointer shadow-xs hover:shadow-sm"
                     >
                       <span>Reprendre</span>
-                      <mat-icon class="!text-[12px] !h-3.5 !w-3.5 flex items-center justify-center">chevron_right</mat-icon>
+                      
                     </button>
                   </div>
                 </div>
@@ -706,7 +685,7 @@
 
         @if (cahierService.monthlySummaries().length === 0) {
           <div class="bg-white dark:bg-slate-900 border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl p-12 text-center shadow-xs transition-all" id="empty-monthly-state">
-            <mat-icon class="text-slate-300 dark:text-slate-700 text-5xl mb-3">menu_book</mat-icon>
+            
             <p class="text-slate-800 dark:text-slate-200 font-semibold">Aucune opération enregistrée</p>
             <p class="text-slate-500 dark:text-slate-400 text-sm mt-1 max-w-sm mx-auto">
               Commencez par ajouter votre première opération journalière à l'aide du bouton ci-dessus.
@@ -738,7 +717,7 @@
                     </td>
                     <td class="px-6 py-4 border border-slate-300 dark:border-slate-700">
                       <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-xs font-medium text-slate-700 dark:text-slate-300 border border-slate-200/50 dark:border-slate-700/50">
-                        <mat-icon class="text-[14px] w-3.5 h-3.5 flex items-center justify-center text-slate-400 dark:text-slate-500">place</mat-icon>
+                        
                         Site {{ summary.site }}
                       </span>
                     </td>
@@ -751,7 +730,7 @@
                         class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-semibold rounded-lg transition-all cursor-pointer border border-slate-200 dark:border-slate-700"
                       >
                         <span>Voir détail</span>
-                        <mat-icon class="text-xs leading-none h-3.5 w-3.5">arrow_forward</mat-icon>
+                        
                       </button>
                     </td>
                   </tr>
@@ -772,7 +751,7 @@
                 class="p-1 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg transition-all cursor-pointer border border-slate-200 dark:border-slate-700 flex items-center justify-center focus:outline-hidden"
                 aria-label="Retourner à la vue mensuelle"
               >
-                <mat-icon class="!text-[16px] !h-4 !w-4">arrow_back</mat-icon>
+                
               </button>
               <div>
                 <h2 class="text-sm font-bold text-slate-900 dark:text-white whitespace-nowrap uppercase">
@@ -837,7 +816,7 @@
                 
                 <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
                   <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-xs font-bold text-indigo-700 dark:text-indigo-400 shadow-2xs">
-                    <mat-icon class="!text-xs !h-3.5 !w-3.5 flex items-center justify-center">date_range</mat-icon>
+                    
                     {{ weekGroup.label }}
                   </span>
                   @if (weekGroup.week && !weekGroup.week.is_closed) {
@@ -848,7 +827,7 @@
                       [title]="!canCloseWeek(weekGroup.week) ? 'La semaine n\'est pas encore terminée' : ''"
                       class="px-3 py-1 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-bold rounded-lg transition-all flex items-center gap-1"
                     >
-                      <mat-icon class="!text-[12px] !h-3 !w-3 flex items-center justify-center">lock</mat-icon>
+                      
                       <span>Clôturer la semaine</span>
                     </button>
                   }
@@ -1130,7 +1109,7 @@
       <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-xl relative z-10 transform transition-all duration-300 scale-100">
         <div class="flex items-start gap-4">
           <div class="p-3 bg-amber-500/10 text-amber-600 dark:text-amber-400 rounded-xl shrink-0">
-            <mat-icon class="!text-[24px] !h-6 !w-6 flex items-center justify-center">lock</mat-icon>
+            
           </div>
           <div class="space-y-2 flex-1">
             <h3 class="text-base font-bold text-slate-900 dark:text-white">
@@ -1175,7 +1154,7 @@
       >
         <div class="flex items-start gap-4">
           <div class="p-3 bg-rose-500/10 text-rose-600 dark:text-rose-400 rounded-xl shrink-0">
-            <mat-icon class="!text-[24px] !h-6 !w-6 flex items-center justify-center">warning</mat-icon>
+            
           </div>
           <div class="space-y-2 flex-1">
             <h3 id="delete-modal-title" class="text-base font-bold text-slate-900 dark:text-white">
@@ -1209,7 +1188,7 @@
               </svg>
               <span>Suppression...</span>
             } @else {
-              <mat-icon class="text-sm leading-none h-4 w-4">delete_forever</mat-icon>
+              
               <span>Supprimer</span>
             }
           </button>
