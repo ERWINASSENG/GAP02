@@ -38,8 +38,6 @@ export class AdminCahierViewComponent implements OnInit {
     'Chargement', 'Déchargement', 'Surmontage', 'Transfert', 'Son',
     'Chargement Wagon Blé', 'Chargement Wagon Farine', 'Reconditionnement', 'Nettoyage', 'Chargement Camions'
   ];
-  readonly sonLevels = ['Faible', 'Moyen', 'Élevé'];
-  readonly frequences = ['Basse', 'Moyenne', 'Haute'];
 
   // Signals pour les utilisateurs créés par cet admin
   readonly createdUsers = signal<CreatedUser[]>([]);
@@ -78,11 +76,7 @@ export class AdminCahierViewComponent implements OnInit {
     type: new FormControl<string>('', { nonNullable: true, validators: [Validators.required] }),
     date: new FormControl<string>('', { nonNullable: true, validators: [Validators.required] }),
     heure: new FormControl<string>('', { nonNullable: true, validators: [Validators.required] }),
-    details: new FormControl<string>(''),
-    sonLevel: new FormControl<string>('Moyen'),
-    frequence: new FormControl<string>('Basse'),
     produit: new FormControl<string>(''),
-    destination: new FormControl<string>(''),
     quantite: new FormControl<number | null>(null),
     items: new FormArray<FormGroup>([])
   });
@@ -187,11 +181,7 @@ export class AdminCahierViewComponent implements OnInit {
       type: op.type,
       date: op.date,
       heure: op.heure,
-      details: op.details || '',
-      sonLevel: op.sonLevel || 'Moyen',
-      frequence: op.frequence || 'Basse',
       produit: op.produit || '',
-      destination: op.destination || '',
       quantite: op.quantite ?? null
     });
     (op.items || []).forEach(item => this.editItemsArray.push(this.createEditItemGroup(item)));
@@ -249,11 +239,7 @@ export class AdminCahierViewComponent implements OnInit {
       type: val.type as Operation['type'],
       date: val.date,
       heure: val.heure,
-      details: val.details || '',
-      sonLevel: val.sonLevel || 'Moyen',
-      frequence: val.frequence || 'Basse',
       produit: val.produit || '',
-      destination: val.destination || '',
       quantite: val.quantite ?? undefined,
       items
     };
