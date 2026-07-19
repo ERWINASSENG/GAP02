@@ -135,7 +135,22 @@ export class AdminCahierViewComponent implements OnInit {
 
   getIdentifierLabel(op: Operation): string {
     const type = op.type?.toLowerCase() || '';
-    return type.includes('wagon') || type.includes('camion') ? 'N° wagon' : 'DN';
+    return type.includes('wagon') || type.includes('camion') ? 'N° wagon' : 'DN / LTI / ISTI';
+  }
+
+  getGroupTitle(group: TypeSiteGroup): string {
+    const type = (group.type || '').trim().toUpperCase();
+    const site = (group.site || '').trim().toUpperCase();
+
+    if (type === 'CHARGEMENT' && site) {
+      return `CHARGEMENT ${site}`;
+    }
+
+    if (type && site) {
+      return `${type} ${site}`;
+    }
+
+    return group.label.toUpperCase();
   }
 
   // --- Sélection de groupes type/site pour export ciblé ---
