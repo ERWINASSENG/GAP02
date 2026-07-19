@@ -45,6 +45,7 @@ export class CahierComponent implements OnInit {
   readonly isSaving = signal<boolean>(false);
   readonly operationToDelete = signal<string | null>(null);
   readonly validationBlockMessage = signal<string | null>(null);
+  readonly validationBlockTitle = signal<string>('Saisie Bloquée — Semaine active non clôturée');
   readonly detailGroupingMode = signal<'week' | 'type'>('week');
 
   readonly activeWeeksBySite = computed(() => {
@@ -526,6 +527,7 @@ export class CahierComponent implements OnInit {
     } catch (err: unknown) {
       console.error(err);
       const errMsg = err instanceof Error ? err.message : 'Une erreur est survenue lors de l\'enregistrement du brouillon.';
+      this.validationBlockTitle.set('Erreur d\'enregistrement');
       this.validationBlockMessage.set(errMsg);
     } finally {
       this.isSaving.set(false);
@@ -636,6 +638,7 @@ export class CahierComponent implements OnInit {
     const val = this.operationForm.getRawValue();
     const validation = this.cahierService.validateOperationDate(val.site, val.date);
     if (!validation.allowed) {
+      this.validationBlockTitle.set('Saisie Bloquée — Semaine active non clôturée');
       this.validationBlockMessage.set(validation.reason || 'Saisie bloquée.');
       return;
     }
@@ -684,6 +687,7 @@ export class CahierComponent implements OnInit {
     } catch (err: unknown) {
       console.error(err);
       const errMsg = err instanceof Error ? err.message : 'Une erreur est survenue lors de l\'enregistrement.';
+      this.validationBlockTitle.set('Erreur d\'enregistrement');
       this.validationBlockMessage.set(errMsg);
     } finally {
       this.isSaving.set(false);
@@ -703,6 +707,7 @@ export class CahierComponent implements OnInit {
       try {
         const success = await this.cahierService.deleteOperation(id);
         if (!success) {
+          this.validationBlockTitle.set('Erreur de suppression');
           this.validationBlockMessage.set('La suppression a échoué. L\'opération est toujours présente.');
         }
       } finally {

@@ -119,10 +119,43 @@ export class CahierService {
         }]);
       if (error) throw error;
     } catch (err) {
+      // Cas de course : un collègue du même site vient de créer la même semaine
+      // (contrainte UNIQUE site/start_date/end_date) juste avant nous. On se
+      // rattrape en récupérant la semaine existante plutôt que d'échouer.
+      const isUniqueViolation = typeof err === 'object' && err !== null && 'code' in err && (err as { code?: string }).code === '23505';
+      if (isUniqueViolation) {
+        this._weeks.set(previousWeeks);
+        const { data: existing, error: fetchError } = await this.supabaseService.client
+          .from('cahier_weeks')
+          .select('*')
+          .eq('site', site)
+          .eq('start_date', startDateStr)
+          .eq('end_date', endDateStr)
+          .maybeSingle();
+
+        if (!fetchError && existing) {
+          const recoveredWeek: WorkWeek = {
+            id: existing['id'] as string,
+            site: existing['site'] as string,
+            start_date: existing['start_date'] as string,
+            end_date: existing['end_date'] as string,
+            is_closed: existing['is_closed'] as boolean,
+            closed_at: existing['closed_at'] as string,
+            created_at: existing['created_at'] as string,
+            user_id: existing['user_id'] as string
+          };
+          this._weeks.set([recoveredWeek, ...previousWeeks]);
+          return recoveredWeek;
+        }
+      }
+
       console.error('Error creating week in Supabase:', err);
       // Rollback
       this._weeks.set(previousWeeks);
-      throw err;
+      const message = (typeof err === 'object' && err !== null && 'message' in err)
+        ? String((err as { message?: unknown }).message)
+        : 'Erreur lors de la création de la semaine de travail.';
+      throw new Error(message);
     }
 
     return newWeek;
