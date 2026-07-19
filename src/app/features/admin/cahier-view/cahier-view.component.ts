@@ -110,6 +110,34 @@ export class AdminCahierViewComponent implements OnInit {
     this.excelExportService.exportMonthlySummaryToExcel(summary);
   }
 
+  getItemAmount(item: OperationItem): number {
+    const amount = Number(item.montant);
+    if (Number.isFinite(amount) && amount > 0) {
+      return amount;
+    }
+
+    const qte = Number(item.qte) || 0;
+    const pu = Number(item.pu) || 0;
+    return qte * pu;
+  }
+
+  getOperationTotal(op: Operation): number {
+    return (op.items || []).reduce((sum, item) => sum + this.getItemAmount(item), 0);
+  }
+
+  getGroupTotal(group: TypeSiteGroup): number {
+    return group.ops.reduce((sum, op) => sum + this.getOperationTotal(op), 0);
+  }
+
+  getSummaryTotal(summary: MonthlySummary): number {
+    return summary.operations.reduce((sum, op) => sum + this.getOperationTotal(op), 0);
+  }
+
+  getIdentifierLabel(op: Operation): string {
+    const type = op.type?.toLowerCase() || '';
+    return type.includes('wagon') || type.includes('camion') ? 'N° wagon' : 'DN';
+  }
+
   // --- Sélection de groupes type/site pour export ciblé ---
 
   isGroupSelected(key: string): boolean {
