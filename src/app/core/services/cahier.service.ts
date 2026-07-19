@@ -405,7 +405,6 @@ export class CahierService {
         const dbItems = finalizedOp.items.map(item => ({
           id: item.id || crypto.randomUUID(),
           operation_id: finalizedOp.id,
-          date: item.date,
           dn: item.dn || '',
           produit: item.produit || '',
           quantite: Number(item.qte) || 0,
@@ -510,7 +509,6 @@ export class CahierService {
         const dbItems = draftOp.items.map(item => ({
           id: item.id || crypto.randomUUID(),
           operation_id: draftOp.id,
-          date: item.date,
           dn: item.dn || '',
           produit: item.produit || '',
           quantite: Number(item.qte) || 0,
