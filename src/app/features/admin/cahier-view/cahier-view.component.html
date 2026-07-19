@@ -333,27 +333,94 @@
 
           <div class="space-y-2">
             <div class="flex items-center justify-between">
-              <label class="block text-xs font-medium text-slate-500">Items (DN / Produit / Quantité / PU / Montant)</label>
+              <label class="block text-xs font-medium text-slate-500">Lignes de détail</label>
               <button type="button" (click)="addEditItem()" class="text-xs font-medium text-indigo-600 hover:text-indigo-700">
                 + Ajouter une ligne
               </button>
             </div>
 
-            <div formArrayName="items" class="space-y-2">
-              @for (itemGroup of editItemsArray.controls; track $index) {
-                <div [formGroupName]="$index" class="grid grid-cols-2 sm:grid-cols-12 gap-2 items-center bg-slate-50 rounded-lg p-2">
-                  <input formControlName="dn" placeholder="DN" class="sm:col-span-3 rounded-md border border-slate-200 px-2 py-1 text-xs">
-                  <input formControlName="produit" placeholder="Produit" class="sm:col-span-3 rounded-md border border-slate-200 px-2 py-1 text-xs">
-                  <input type="number" formControlName="qte" placeholder="Qté" (input)="recalculateItemMontant($index)" class="sm:col-span-2 rounded-md border border-slate-200 px-2 py-1 text-xs">
-                  <input type="number" formControlName="pu" placeholder="PU" (input)="recalculateItemMontant($index)" class="sm:col-span-2 rounded-md border border-slate-200 px-2 py-1 text-xs">
-                  <input type="number" formControlName="montant" placeholder="Montant" class="col-span-2 sm:col-span-1 rounded-md border border-slate-200 px-2 py-1 text-xs">
-                  <button type="button" (click)="removeEditItem($index)" class="col-span-2 sm:col-span-1 text-rose-500 hover:text-rose-700 text-xs py-1 border border-rose-100 rounded-md sm:border-0 sm:py-0">
-                    Retirer la ligne
-                  </button>
-                </div>
-              } @empty {
-                <p class="text-xs text-slate-400 italic">Aucun item pour cette opération.</p>
-              }
+            <div class="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700">
+              <table class="min-w-[900px] w-full text-center border-collapse text-xs">
+                <thead>
+                  <tr class="bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 uppercase tracking-wider text-[11px] font-bold">
+                    <th class="px-2 py-2 border border-slate-200 dark:border-slate-700 text-center">DATE</th>
+                    @if (isEditWagonOperation()) {
+                      <th class="px-2 py-2 border border-slate-200 dark:border-slate-700 text-center">N° WAGON</th>
+                      <th class="px-2 py-2 border border-slate-200 dark:border-slate-700 text-center">{{ getEditItemSecondColumnLabel() }}</th>
+                    } @else if (isEditCamionOperation()) {
+                      <th class="px-2 py-2 border border-slate-200 dark:border-slate-700 text-center">CAMIONS</th>
+                      <th class="px-2 py-2 border border-slate-200 dark:border-slate-700 text-center">TONNAGE</th>
+                    } @else {
+                      @if (isEditChargementWithPrefix()) {
+                        <th class="px-2 py-2 border border-slate-200 dark:border-slate-700 text-center">DN / LTI / ISTI</th>
+                      }
+                      <th class="px-2 py-2 border border-slate-200 dark:border-slate-700 text-center">PRODUIT</th>
+                      <th class="px-2 py-2 border border-slate-200 dark:border-slate-700 text-center">QTE</th>
+                    }
+                    <th class="px-2 py-2 border border-slate-200 dark:border-slate-700 text-center">PU (FCFA)</th>
+                    <th class="px-2 py-2 border border-slate-200 dark:border-slate-700 text-center">MONTANT (FCFA)</th>
+                    <th class="px-2 py-2 border border-slate-200 dark:border-slate-700 text-center"></th>
+                  </tr>
+                </thead>
+                <tbody formArrayName="items" class="text-slate-700 dark:text-slate-200">
+                  @for (itemGroup of editItemsArray.controls; track $index) {
+                    <tr [formGroupName]="$index" class="hover:bg-slate-50/40 dark:hover:bg-slate-800/40 transition-colors">
+                      <td class="px-2 py-2 border border-slate-200 dark:border-slate-700 text-center">
+                        <input type="date" formControlName="date" class="w-full rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 py-1 text-xs">
+                      </td>
+                      @if (isEditWagonOperation()) {
+                        <td class="px-2 py-2 border border-slate-200 dark:border-slate-700 text-center">
+                          <input type="text" formControlName="dnNumber" placeholder="Wagon N°" class="w-full rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 py-1 text-xs">
+                        </td>
+                        <td class="px-2 py-2 border border-slate-200 dark:border-slate-700 text-center">
+                          <input type="number" formControlName="qte" placeholder="Tonnage" (input)="recalculateItemMontant($index)" class="w-full rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 py-1 text-xs">
+                        </td>
+                      } @else if (isEditCamionOperation()) {
+                        <td class="px-2 py-2 border border-slate-200 dark:border-slate-700 text-center">
+                          <input type="text" formControlName="dnNumber" placeholder="Camion" class="w-full rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 py-1 text-xs">
+                        </td>
+                        <td class="px-2 py-2 border border-slate-200 dark:border-slate-700 text-center">
+                          <input type="number" formControlName="qte" placeholder="Tonnage" (input)="recalculateItemMontant($index)" class="w-full rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 py-1 text-xs">
+                        </td>
+                      } @else {
+                        @if (isEditChargementWithPrefix()) {
+                          <td class="px-2 py-2 border border-slate-200 dark:border-slate-700 text-center">
+                            <div class="flex items-center justify-center gap-1">
+                              <select formControlName="dnPrefix" class="rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 py-1 text-[11px]">
+                                <option value="DN">DN</option>
+                                <option value="LTI">LTI</option>
+                                <option value="ISTI">ISTI</option>
+                              </select>
+                              <input type="text" formControlName="dnNumber" placeholder="0001" class="w-20 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 py-1 text-xs">
+                            </div>
+                          </td>
+                        }
+                        <td class="px-2 py-2 border border-slate-200 dark:border-slate-700 text-center">
+                          <input type="text" formControlName="produit" placeholder="Produit" class="w-full rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 py-1 text-xs">
+                        </td>
+                        <td class="px-2 py-2 border border-slate-200 dark:border-slate-700 text-center">
+                          <input type="number" formControlName="qte" placeholder="Qté" (input)="recalculateItemMontant($index)" class="w-full rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 py-1 text-xs">
+                        </td>
+                      }
+                      <td class="px-2 py-2 border border-slate-200 dark:border-slate-700 text-center">
+                        <input type="number" formControlName="pu" placeholder="PU" (input)="recalculateItemMontant($index)" class="w-full rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 py-1 text-xs">
+                      </td>
+                      <td class="px-2 py-2 border border-slate-200 dark:border-slate-700 text-center">
+                        <input type="number" formControlName="montant" placeholder="Montant" class="w-full rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 py-1 text-xs" readonly>
+                      </td>
+                      <td class="px-2 py-2 border border-slate-200 dark:border-slate-700 text-center">
+                        <button type="button" (click)="removeEditItem($index)" class="text-rose-500 hover:text-rose-700 text-[11px] font-semibold">
+                          Retirer
+                        </button>
+                      </td>
+                    </tr>
+                  } @empty {
+                    <tr>
+                      <td colspan="7" class="px-3 py-4 text-center text-slate-400 text-xs">Aucun item pour cette opération.</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
             </div>
           </div>
 

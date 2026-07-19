@@ -204,10 +204,73 @@ export class AdminCahierViewComponent implements OnInit {
     return this.editForm.get('items') as FormArray;
   }
 
+  isEditWagonOperation(): boolean {
+    const type = (this.editForm.get('type')?.value || '').toLowerCase();
+    return type.includes('wagon');
+  }
+
+  isEditCamionOperation(): boolean {
+    const type = (this.editForm.get('type')?.value || '').toLowerCase();
+    return type.includes('camion');
+  }
+
+  isEditChargementWithPrefix(): boolean {
+    const type = (this.editForm.get('type')?.value || '').toLowerCase();
+    const site = (this.editForm.get('site')?.value || '').toLowerCase();
+    return type === 'chargement' && (site === 'afisa' || site === 'scmc');
+  }
+
+  getEditItemIdentifierLabel(): string {
+    if (this.isEditWagonOperation()) {
+      return 'N° WAGON';
+    }
+    if (this.isEditCamionOperation()) {
+      return 'CAMIONS';
+    }
+    return 'DN / LTI / ISTI';
+  }
+
+  getEditItemSecondColumnLabel(): string {
+    if (this.isEditWagonOperation()) {
+      const product = (this.editForm.get('produit')?.value || '').toLowerCase();
+      return product.includes('blé') || product.includes('ble') ? 'TONNAGE' : 'Nbr SACS';
+    }
+    if (this.isEditCamionOperation()) {
+      return 'TONNAGE';
+    }
+    return 'PRODUIT';
+  }
+
+  getEditItemDnValue(prefix: string, numberValue: string): string {
+    const prefixValue = (prefix || '').trim().toUpperCase();
+    const numberText = (numberValue || '').trim();
+
+    if (!numberText) {
+      return '';
+    }
+
+    if (this.isEditWagonOperation() || this.isEditCamionOperation()) {
+      return numberText;
+    }
+
+    if (prefixValue === 'DN' || prefixValue === 'LTI' || prefixValue === 'ISTI') {
+      return `${prefixValue} ${numberText}`;
+    }
+
+    return numberText;
+  }
+
   private createEditItemGroup(item?: Partial<OperationItem>): FormGroup {
+    const initialDn = item?.dn || '';
+    const prefixMatch = initialDn.match(/^(DN|LTI|ISTI)\b/i);
+    const prefix = prefixMatch ? prefixMatch[1].toUpperCase() : 'DN';
+    const dnNumber = initialDn.replace(/^(DN|LTI|ISTI)\s*/i, '').trim();
+
     return new FormGroup({
       id: new FormControl<string | undefined>(item?.id),
-      dn: new FormControl<string>(item?.dn || '', { nonNullable: true }),
+      date: new FormControl<string>(item?.date || this.editForm.get('date')?.value || '', { nonNullable: true }),
+      dnPrefix: new FormControl<string>(this.isEditChargementWithPrefix() ? prefix : 'DN', { nonNullable: true }),
+      dnNumber: new FormControl<string>(dnNumber, { nonNullable: true }),
       produit: new FormControl<string>(item?.produit || '', { nonNullable: true }),
       qte: new FormControl<number>(item?.qte ?? 0, { nonNullable: true }),
       pu: new FormControl<number>(item?.pu ?? 0, { nonNullable: true }),
@@ -265,10 +328,12 @@ export class AdminCahierViewComponent implements OnInit {
     const val = this.editForm.getRawValue();
     const items: OperationItem[] = this.editItemsArray.controls.map(ctrl => {
       const v = ctrl.getRawValue();
+      const dnValue = this.getEditItemDnValue(v.dnPrefix || 'DN', v.dnNumber || '');
+
       return {
         id: v.id,
-        date: val.date,
-        dn: v.dn || '',
+        date: v.date || val.date,
+        dn: dnValue,
         produit: v.produit || '',
         qte: Number(v.qte) || 0,
         pu: Number(v.pu) || 0,
