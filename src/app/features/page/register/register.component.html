@@ -19,7 +19,7 @@
       <!-- Messages d'alerte -->
       @if (errorMessage()) {
         <div class="p-4 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900 text-red-800 dark:text-red-200 text-sm rounded-xl flex items-start gap-3" id="admin-user-create-error">
-          <mat-icon class="text-red-500 mt-0.5">error_outline</mat-icon>
+          
           <div>
             <strong class="font-semibold block">Échec de la création</strong>
             <span>{{ errorMessage() }}</span>
@@ -29,7 +29,7 @@
 
       @if (successMessage()) {
         <div class="p-4 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900 text-emerald-800 dark:text-emerald-200 text-sm rounded-xl flex items-start gap-3" id="admin-user-create-success">
-          <mat-icon class="text-emerald-500 mt-0.5">check_circle_outline</mat-icon>
+          
           <div>
             <strong class="font-semibold block">Succès</strong>
             <span>{{ successMessage() }}</span>
@@ -157,7 +157,7 @@
               <div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
               <span>Enregistrement...</span>
             } @else {
-              <mat-icon class="text-sm h-4 w-4 leading-none">person_add</mat-icon>
+              
               <span>Enregistrer</span>
             }
           </button>
