@@ -45,58 +45,55 @@
                 </div>
               </div>
 
-              <div class="overflow-x-auto rounded-xl border border-slate-100">
-                <table class="w-full text-left text-sm">
-                  <thead class="bg-slate-50 text-slate-500 font-medium uppercase tracking-wider text-[10px]">
-                    <tr>
-                      <th class="px-4 py-2">Date / Heure</th>
-                      <th class="px-4 py-2">Collaborateur</th>
-                      <th class="px-4 py-2">Détails</th>
-                      <th class="px-4 py-2">Items</th>
-                      <th class="px-4 py-2 text-right">Actions</th>
+              <div class="overflow-x-auto rounded-xl border border-slate-200 shadow-sm bg-white">
+                <table class="w-full text-center border-collapse text-xs sm:text-sm block md:table overflow-x-auto whitespace-nowrap md:whitespace-normal">
+                  <thead>
+                    <tr class="bg-slate-50/50 text-slate-500 text-[11px] font-bold uppercase tracking-wider border-b border-slate-200">
+                      <th class="px-3 py-3 border border-slate-200 text-center">Date</th>
+                      <th class="px-3 py-3 border border-slate-200 text-center">{{ getIdentifierLabel(group.ops[0] || group.ops[0]) }}</th>
+                      <th class="px-3 py-3 border border-slate-200 text-center">Produit</th>
+                      <th class="px-3 py-3 border border-slate-200 text-center">Qté</th>
+                      <th class="px-3 py-3 border border-slate-200 text-center">PU</th>
+                      <th class="px-3 py-3 border border-slate-200 text-center">Montant</th>
                     </tr>
                   </thead>
-                  <tbody class="divide-y divide-slate-100">
+                  <tbody class="text-slate-700">
                     @for (op of group.ops; track op.id) {
-                      <tr class="hover:bg-slate-50 transition-colors">
-                        <td class="px-4 py-3 whitespace-nowrap">
-                          <div class="text-slate-900 font-medium">{{ op.date }}</div>
-                          <div class="text-slate-500 text-xs">{{ op.heure }}</div>
-                        </td>
-                        <td class="px-4 py-3 whitespace-nowrap">
-                          <span class="px-2 py-1 rounded-md bg-indigo-50 text-indigo-700 font-medium text-xs">
-                            {{ op.collaborateur }}
-                          </span>
-                        </td>
-                        <td class="px-4 py-3 max-w-xs truncate text-slate-600">
-                          {{ op.details || '-' }}
-                        </td>
-                        <td class="px-4 py-3 whitespace-nowrap">
-                          <div class="flex flex-col gap-1">
-                            @for (item of op.items; track item.id) {
-                              <div class="text-xs">
-                                <span class="text-slate-900 font-medium">{{ item.produit }}</span>:
-                                <span class="text-slate-500">{{ item.qte }} x {{ item.pu | currency:'XOF':'symbol':'1.0-0' }}</span>
-                              </div>
-                            } @empty {
-                              <span class="text-slate-400 italic text-xs">Aucun item</span>
-                            }
-                          </div>
-                        </td>
-                        <td class="px-4 py-3 text-right whitespace-nowrap">
-                          <button
-                            (click)="openEditModal(op)"
-                            class="px-2 py-1 text-xs font-medium text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors">
-                            Modifier
-                          </button>
-                          <button
-                            (click)="confirmDelete(op.id)"
-                            class="px-2 py-1 text-xs font-medium text-slate-600 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors">
-                            Supprimer
-                          </button>
-                        </td>
-                      </tr>
+                      @for (item of op.items || []; track $index; let idx = $index; let len = $count) {
+                        <tr class="hover:bg-slate-50/30 transition-all text-xs border-b border-slate-200">
+                          @if (idx === 0) {
+                            <td class="px-3 py-3 border border-slate-200 text-center font-semibold text-slate-800" [attr.rowspan]="len">
+                              {{ op.date }}
+                            </td>
+                          }
+                          <td class="px-3 py-3 border border-slate-200 text-center font-mono text-slate-600">
+                            {{ item.dn || '—' }}
+                          </td>
+                          <td class="px-3 py-3 border border-slate-200 text-center text-slate-800">
+                            {{ item.produit || '—' }}
+                          </td>
+                          <td class="px-3 py-3 border border-slate-200 text-center font-mono">
+                            {{ item.qte | number }}
+                          </td>
+                          <td class="px-3 py-3 border border-slate-200 text-center font-mono text-slate-500">
+                            {{ item.pu | number }}
+                          </td>
+                          <td class="px-3 py-3 border border-slate-200 text-center font-mono font-semibold text-indigo-600">
+                            {{ getItemAmount(item) | number }}
+                          </td>
+                        </tr>
+                      } @empty {
+                        <tr>
+                          <td colspan="6" class="px-3 py-6 text-center text-slate-400 text-xs">Aucun item</td>
+                        </tr>
+                      }
                     }
+                    <tr class="bg-slate-50/70 font-semibold text-slate-800">
+                      <td colspan="5" class="px-3 py-3 border border-slate-200 text-right">Total</td>
+                      <td class="px-3 py-3 border border-slate-200 text-center font-mono text-indigo-700">
+                        {{ getGroupTotal(group) | number }}
+                      </td>
+                    </tr>
                   </tbody>
                 </table>
               </div>
@@ -140,49 +137,55 @@
             </div>
           </div>
 
-          <div class="overflow-x-auto">
-            <table class="w-full text-left text-sm">
-              <thead class="bg-slate-50 text-slate-500 font-medium uppercase tracking-wider text-[10px]">
-                <tr>
-                  <th class="px-6 py-3">Date / Heure</th>
-                  <th class="px-6 py-3">Collaborateur</th>
-                  <th class="px-6 py-3">Type</th>
-                  <th class="px-6 py-3">Détails</th>
-                  <th class="px-6 py-3">Items</th>
+          <div class="overflow-x-auto rounded-xl border border-slate-200 shadow-sm bg-white m-4">
+            <table class="w-full text-center border-collapse text-xs sm:text-sm block md:table overflow-x-auto whitespace-nowrap md:whitespace-normal">
+              <thead>
+                <tr class="bg-slate-50/50 text-slate-500 text-[11px] font-bold uppercase tracking-wider border-b border-slate-200">
+                  <th class="px-3 py-3 border border-slate-200 text-center">Date</th>
+                  <th class="px-3 py-3 border border-slate-200 text-center">{{ getIdentifierLabel(summary.operations[0] || summary.operations[0]) }}</th>
+                  <th class="px-3 py-3 border border-slate-200 text-center">Produit</th>
+                  <th class="px-3 py-3 border border-slate-200 text-center">Qté</th>
+                  <th class="px-3 py-3 border border-slate-200 text-center">PU</th>
+                  <th class="px-3 py-3 border border-slate-200 text-center">Montant</th>
                 </tr>
               </thead>
-              <tbody class="divide-y divide-slate-100">
+              <tbody class="text-slate-700">
                 @for (op of summary.operations; track op.id) {
-                  <tr class="hover:bg-slate-50 transition-colors">
-                    <td class="px-6 py-4 whitespace-nowrap">
-                      <div class="text-slate-900 font-medium">{{ op.date }}</div>
-                      <div class="text-slate-500 text-xs">{{ op.heure }}</div>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                      <span class="px-2 py-1 rounded-md bg-indigo-50 text-indigo-700 font-medium text-xs">
-                        {{ op.collaborateur }}
-                      </span>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                      <span class="text-slate-900 font-medium">{{ op.type }}</span>
-                    </td>
-                    <td class="px-6 py-4 max-w-xs truncate text-slate-600">
-                      {{ op.details || '-' }}
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                      <div class="flex flex-col gap-1">
-                        @for (item of op.items; track item.id) {
-                          <div class="text-xs">
-                            <span class="text-slate-900 font-medium">{{ item.produit }}</span>: 
-                            <span class="text-slate-500">{{ item.qte }} x {{ item.pu | currency:'XOF':'symbol':'1.0-0' }}</span>
-                          </div>
-                        } @empty {
-                          <span class="text-slate-400 italic text-xs">Aucun item</span>
-                        }
-                      </div>
-                    </td>
-                  </tr>
+                  @for (item of op.items || []; track $index; let idx = $index; let len = $count) {
+                    <tr class="hover:bg-slate-50/30 transition-all text-xs border-b border-slate-200">
+                      @if (idx === 0) {
+                        <td class="px-3 py-3 border border-slate-200 text-center font-semibold text-slate-800" [attr.rowspan]="len">
+                          {{ op.date }}
+                        </td>
+                      }
+                      <td class="px-3 py-3 border border-slate-200 text-center font-mono text-slate-600">
+                        {{ item.dn || '—' }}
+                      </td>
+                      <td class="px-3 py-3 border border-slate-200 text-center text-slate-800">
+                        {{ item.produit || '—' }}
+                      </td>
+                      <td class="px-3 py-3 border border-slate-200 text-center font-mono">
+                        {{ item.qte | number }}
+                      </td>
+                      <td class="px-3 py-3 border border-slate-200 text-center font-mono text-slate-500">
+                        {{ item.pu | number }}
+                      </td>
+                      <td class="px-3 py-3 border border-slate-200 text-center font-mono font-semibold text-indigo-600">
+                        {{ getItemAmount(item) | number }}
+                      </td>
+                    </tr>
+                  } @empty {
+                    <tr>
+                      <td colspan="6" class="px-3 py-6 text-center text-slate-400 text-xs">Aucun item</td>
+                    </tr>
+                  }
                 }
+                <tr class="bg-slate-50/70 font-semibold text-slate-800">
+                  <td colspan="5" class="px-3 py-3 border border-slate-200 text-right">Total</td>
+                  <td class="px-3 py-3 border border-slate-200 text-center font-mono text-indigo-700">
+                    {{ getSummaryTotal(summary) | number }}
+                  </td>
+                </tr>
               </tbody>
             </table>
           </div>
