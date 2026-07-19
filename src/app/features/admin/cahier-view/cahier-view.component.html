@@ -13,7 +13,7 @@
           <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
             <div class="flex items-center gap-3">
               <div class="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center">
-                <mat-icon>calendar_month</mat-icon>
+                
               </div>
               <div>
                 <h2 class="font-semibold text-slate-900">{{ summary.month }}</h2>
@@ -28,13 +28,13 @@
                 (click)="exportToExcel(summary)"
                 class="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
                 title="Exporter en Excel">
-                <mat-icon>table_view</mat-icon>
+                
               </button>
               <button 
                 (click)="exportToPdf(summary)"
                 class="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
                 title="Exporter en PDF">
-                <mat-icon>picture_as_pdf</mat-icon>
+                
               </button>
             </div>
           </div>
@@ -94,7 +94,7 @@
       <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4">
         <div class="flex items-center justify-between pb-2 border-b border-slate-100">
           <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
-            <mat-icon class="text-indigo-600">people</mat-icon>
+            
             Vos collaborateurs
           </h2>
           <span class="px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 font-bold text-xs">
@@ -109,7 +109,7 @@
           </div>
         } @else if (errorUsers()) {
           <div class="p-4 bg-rose-50 text-rose-600 rounded-xl text-xs flex items-center gap-2">
-            <mat-icon class="text-sm">error</mat-icon>
+            
             {{ errorUsers() }}
           </div>
         } @else {
@@ -137,7 +137,7 @@
               </div>
             } @empty {
               <div class="py-12 text-center text-slate-400 flex flex-col items-center justify-center space-y-2">
-                <mat-icon class="text-3xl">people_outline</mat-icon>
+                
                 <p class="text-xs font-semibold text-slate-900">Aucun collaborateur</p>
                 <p class="text-[11px] text-slate-400 max-w-[200px] mx-auto">Aucun compte collaborateur n'a été créé pour le moment.</p>
               </div>
