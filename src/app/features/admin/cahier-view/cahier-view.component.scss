@@ -1,7 +1,7 @@
 :host {
   display: block;
   min-height: 100vh;
-  background-color: #f8fafc; // slate-50
+  background: transparent;
 }
 
 table {
@@ -10,7 +10,7 @@ table {
 }
 
 th {
-  background-color: #f8fafc;
+  background-color: transparent;
   position: sticky;
   top: 0;
   z-index: 10;
