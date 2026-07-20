@@ -7,7 +7,7 @@ import { AuthService } from '../../../core/services/auth.service';
 import { PdfExportService } from '../../../core/services/pdf-export.service';
 import { DocxExportService } from '../../../core/services/docx-export.service';
 import { ExcelExportService } from '../../../core/services/excel-export.service';
-import { Operation, MonthlySummary, OperationItem, WorkWeek } from '../../../shared/models/cahier.model';
+import { Operation, MonthlySummary, OperationItem, WorkWeek, OPERATION_TYPES } from '../../../shared/models/cahier.model';
 
 interface OperationFormValue {
   site?: string;
@@ -106,10 +106,7 @@ export class CahierComponent implements OnInit {
 
   // Available options
   readonly sites = ['SCMC', 'TUSCANI', 'AFISA', 'AUTRE'];
-  readonly operationTypes = [
-    'Chargement', 'Déchargement', 'Surmontage', 'Transfert', 'Son',
-    'Chargement Wagon Blé', 'Chargement Wagon Farine', 'Reconditionnement', 'Nettoyage', 'Chargement Camions'
-  ] as const;
+  readonly operationTypes = OPERATION_TYPES;
   readonly filteredOperationTypes = computed<string[]>(() => {
     const site = this.formValue().site;
     if (site === 'TUSCANI') {
@@ -120,9 +117,31 @@ export class CahierComponent implements OnInit {
     }
     return ['Chargement', 'Déchargement', 'Surmontage', 'Transfert', 'Son'];
   });
-  readonly sonLevels = ['Faible', 'Moyen', 'Élevé'];
-  readonly frequences = ['Basse', 'Moyenne', 'Haute'];
 
+  readonly productPriceMap = new Map<string, number>([
+    ['AFRICANA 50KG', 25],
+    ['CDB', 25],
+    ['MAKHLOUT50KG', 25],
+    ['MM50KG', 25],
+    ['MM25KG', 12.5],
+    ['MM5KG', 2.5],
+    ['PRIMO', 25],
+    ['SITAL FANGASSOU 25KG', 12.5],
+    ['WAGON DE BLÉ', 200],
+    ['WAGON DE FARINE', 25],
+    ['CAMION TUSCANY', 1200]
+  ]);
+
+  readonly productSuggestions = signal<string[]>([]);
+  readonly activeProductRowIndex = signal<number | null>(null);
+
+  private normalizeProductString(s: string | null | undefined): string {
+    return (s || '').toString().replace(/\s+/g, ' ').trim().toUpperCase();
+  }
+
+  private findProductMapKeyByNormalized(normalized: string): string | undefined {
+    return Array.from(this.productPriceMap.keys()).find(k => this.normalizeProductString(k) === normalized);
+  }
   // Form group definition
   readonly operationForm = new FormGroup({
     site: new FormControl<string>('', { validators: [Validators.required], nonNullable: true }),
@@ -231,6 +250,50 @@ export class CahierComponent implements OnInit {
       montant: new FormControl<number | null>(montant, { validators: [Validators.required, Validators.min(0)] })
     });
 
+    const updateProductSuggestions = (value: string) => {
+      const query = this.normalizeProductString(value);
+      if (!query) {
+        this.productSuggestions.set([]);
+        this.activeProductRowIndex.set(null);
+        return;
+      }
+
+      const suggestions = Array.from(this.productPriceMap.keys())
+        .filter(key => this.normalizeProductString(key).includes(query));
+
+      this.productSuggestions.set(suggestions.slice(0, 6));
+      this.activeProductRowIndex.set(this.itemsFormArray.controls.indexOf(group));
+    };
+
+    const applyProductSelection = (product: string) => {
+      this.selectProductSuggestion(this.itemsFormArray.controls.indexOf(group), product);
+    };
+
+    group.controls['produit'].valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(value => {
+      const productValue = (value || '').toString();
+      if (productValue.trim() === '') {
+        this.productSuggestions.set([]);
+        this.activeProductRowIndex.set(null);
+        return;
+      }
+
+      const normalized = this.normalizeProductString(productValue);
+      const isWagonType = ['Chargement Wagon Blé', 'Chargement Wagon Farine'].includes(currentType);
+      const isCamionTuscany = normalized === 'CAMION TUSCANY';
+
+      // Find a matching product key by normalized form
+      const matchedKey = this.findProductMapKeyByNormalized(normalized);
+
+      // Apply automatic PU for known products, except wagon types.
+      // CAMION TUSCANY is explicitly allowed for Chargement Camions.
+      if (matchedKey && (!isWagonType || isCamionTuscany)) {
+        applyProductSelection(matchedKey);
+        return;
+      }
+
+      updateProductSuggestions(productValue);
+    });
+
     // Auto-calculate montant when qte or pu changes, and dn when prefix or number changes
     group.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(v => {
       const calculatedMontant = (Number(v.qte) || 0) * (Number(v.pu) || 0);
@@ -293,6 +356,21 @@ export class CahierComponent implements OnInit {
     this.itemsFormArray.removeAt(index);
     this.operationForm.updateValueAndValidity();
     this.formValue.set(this.operationForm.value as OperationFormValue);
+  }
+
+  selectProductSuggestion(rowIndex: number, product: string) {
+    const group = this.itemsFormArray.at(rowIndex) as FormGroup | null;
+    if (!group) {
+      return;
+    }
+
+    const puValue = this.productPriceMap.get(product) ?? null;
+    group.controls['produit'].setValue(product, { emitEvent: false });
+    group.controls['pu'].setValue(puValue, { emitEvent: false });
+    group.controls['montant'].setValue((Number(group.controls['qte'].value) || 0) * (Number(puValue) || 0), { emitEvent: false });
+    this.productSuggestions.set([]);
+    this.activeProductRowIndex.set(null);
+    this.operationForm.updateValueAndValidity({ emitEvent: false });
   }
 
   onGlobalPrefixChange(newPrefix: string) {

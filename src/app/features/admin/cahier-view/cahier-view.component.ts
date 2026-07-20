@@ -5,7 +5,7 @@ import { CahierService } from '../../../core/services/cahier.service';
 import { PdfExportService } from '../../../core/services/pdf-export.service';
 import { ExcelExportService } from '../../../core/services/excel-export.service';
 import { DocxExportService } from '../../../core/services/docx-export.service';
-import { MonthlySummary, Operation, OperationItem } from '../../../shared/models/cahier.model';
+import { MonthlySummary, Operation, OperationItem, OPERATION_TYPES } from '../../../shared/models/cahier.model';
 import { AuthService } from '../../../core/services/auth.service';
 import { CreatedUser } from '../../../shared/models/auth.model';
 
@@ -34,10 +34,7 @@ export class AdminCahierViewComponent implements OnInit {
   readonly summaries = this.cahierService.adminMonthlySummaries;
 
   readonly sites = ['SCMC', 'TUSCANI', 'AFISA', 'AUTRE'];
-  readonly operationTypes = [
-    'Chargement', 'Déchargement', 'Surmontage', 'Transfert', 'Son',
-    'Chargement Wagon Blé', 'Chargement Wagon Farine', 'Reconditionnement', 'Nettoyage', 'Chargement Camions'
-  ];
+  readonly operationTypes = OPERATION_TYPES;
 
   // Signals pour les utilisateurs créés par cet admin
   readonly createdUsers = signal<CreatedUser[]>([]);
