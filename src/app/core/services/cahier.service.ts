@@ -17,11 +17,13 @@ export class CahierService {
   private readonly _operations = signal<Operation[]>([]);
   private readonly _adminOperations = signal<Operation[]>([]);
   private readonly _weeks = signal<WorkWeek[]>([]);
+  private readonly _adminWeeks = signal<WorkWeek[]>([]);
 
   // Public read-only signals
   readonly operations = computed(() => this._operations());
   readonly adminOperations = computed(() => this._adminOperations());
   readonly weeks = computed(() => this._weeks());
+  readonly adminWeeks = computed(() => this._adminWeeks());
 
   constructor() {
     // Re-load operations and weeks whenever the authenticated user changes
@@ -31,6 +33,7 @@ export class CahierService {
       this.loadInitialWeeks(user?.id);
       if (user?.role === 'admin') {
         this.loadAllOperationsForAdmin();
+        this.loadAllWeeksForAdmin();
       }
     });
   }
@@ -69,6 +72,47 @@ export class CahierService {
       }
     } catch (err) {
       console.error('❌ Erreur Réseau ou Supabase (semaines):', err);
+    }
+  }
+
+  /**
+   * Charge toutes les semaines de tous les sites (Admin uniquement).
+   * Contrairement à loadInitialWeeks(), n'est pas filtré par site : un admin
+   * n'a pas de assignedSiteName et doit voir l'ensemble des sites.
+   */
+  async loadAllWeeksForAdmin() {
+    if (!this.isBrowser) return;
+
+    const user = this.authService.currentUser();
+    if (user?.role !== 'admin') {
+      this._adminWeeks.set([]);
+      return;
+    }
+
+    try {
+      const { data, error } = await this.supabaseService.client
+        .from('cahier_weeks')
+        .select('*')
+        .order('site', { ascending: true })
+        .order('start_date', { ascending: false });
+
+      if (!error && data) {
+        const mappedWeeks: WorkWeek[] = data.map((w: Record<string, unknown>) => ({
+          id: w['id'] as string,
+          site: w['site'] as string,
+          start_date: w['start_date'] as string,
+          end_date: w['end_date'] as string,
+          is_closed: w['is_closed'] as boolean,
+          closed_at: w['closed_at'] as string,
+          created_at: w['created_at'] as string,
+          user_id: w['user_id'] as string
+        }));
+        this._adminWeeks.set(mappedWeeks);
+      } else if (error) {
+        console.error('❌ Erreur Supabase (Fetch semaines admin):', error.message);
+      }
+    } catch (err) {
+      console.error('❌ Erreur Réseau ou Supabase (semaines admin):', err);
     }
   }
 
@@ -162,6 +206,43 @@ export class CahierService {
   }
 
   /**
+   * Recule le début d'une semaine active jusqu'à newStartDate, car une
+   * opération a été saisie avec une date antérieure au début actuel de la
+   * semaine (règle métier : la semaine démarre à la première date saisie).
+   * La date de fin n'est reculée que si nécessaire pour ne jamais exclure
+   * des opérations déjà rattachées à cette semaine (elle ne rétrécit jamais).
+   */
+  private async shiftWeekStart(week: WorkWeek, newStartDate: string): Promise<WorkWeek> {
+    const computedEnd = new Date(newStartDate);
+    computedEnd.setDate(computedEnd.getDate() + 5);
+    const computedEndStr = computedEnd.toISOString().split('T')[0];
+    const newEndDate = computedEndStr > week.end_date ? computedEndStr : week.end_date;
+
+    const previousWeeks = this._weeks();
+    const updated = previousWeeks.map(w =>
+      w.id === week.id ? { ...w, start_date: newStartDate, end_date: newEndDate } : w
+    );
+    this._weeks.set(updated);
+
+    try {
+      const { error } = await this.supabaseService.client
+        .from('cahier_weeks')
+        .update({ start_date: newStartDate, end_date: newEndDate })
+        .eq('id', week.id);
+      if (error) throw error;
+    } catch (err) {
+      console.error('Error shifting week start in Supabase:', err);
+      this._weeks.set(previousWeeks);
+      const message = (typeof err === 'object' && err !== null && 'message' in err)
+        ? String((err as { message?: unknown }).message)
+        : 'Erreur lors de l\'ajustement de la semaine de travail.';
+      throw new Error(message);
+    }
+
+    return { ...week, start_date: newStartDate, end_date: newEndDate };
+  }
+
+  /**
    * Closes an active week manually
    */
   async closeWeek(weekId: string): Promise<boolean> {
@@ -201,6 +282,43 @@ export class CahierService {
     }
 
     return true;
+  }
+
+  /**
+   * Modifie la date de début et de fin d'une semaine de travail (exposé côté
+   * UI uniquement dans la vue admin). Agit sur _adminWeeks.
+   */
+  async adminUpdateWeek(weekId: string, startDate: string, endDate: string): Promise<{ success: boolean; error?: string }> {
+    if (endDate < startDate) {
+      return { success: false, error: 'La date de fin ne peut pas être antérieure à la date de début.' };
+    }
+
+    const previousAdminWeeks = this._adminWeeks();
+    const updatedOptimistic = previousAdminWeeks.map(w =>
+      w.id === weekId ? { ...w, start_date: startDate, end_date: endDate } : w
+    );
+    this._adminWeeks.set(updatedOptimistic);
+
+    try {
+      const { error } = await this.supabaseService.client
+        .from('cahier_weeks')
+        .update({ start_date: startDate, end_date: endDate })
+        .eq('id', weekId);
+
+      if (error) throw error;
+    } catch (err) {
+      console.error('Error updating week (admin):', err);
+      this._adminWeeks.set(previousAdminWeeks);
+      const isUniqueViolation = typeof err === 'object' && err !== null && 'code' in err && (err as { code?: string }).code === '23505';
+      const message = isUniqueViolation
+        ? 'Une autre semaine existe déjà pour ce site avec ces mêmes dates.'
+        : (typeof err === 'object' && err !== null && 'message' in err)
+          ? String((err as { message?: unknown }).message)
+          : 'Erreur lors de la modification de la semaine.';
+      return { success: false, error: message };
+    }
+
+    return { success: true };
   }
 
   /**
@@ -268,7 +386,7 @@ export class CahierService {
     try {
       const session = await this.supabaseService.getSession();
       const token = session?.access_token;
-      
+
       if (!token) {
         console.error('❌ Erreur: Session non valide pour admin fetch.');
         return;
@@ -279,7 +397,7 @@ export class CahierService {
           'Authorization': `Bearer ${token}`
         }
       });
-      
+
       const data = await response.json();
 
       if (response.ok && data.success && data.operations) {
@@ -349,11 +467,18 @@ export class CahierService {
     if (!weekId) {
       let activeWeek = this.getActiveWeek(opData.site);
       if (!activeWeek) {
+        // Aucune semaine active : elle démarre à la date saisie (règle métier :
+        // la semaine commence à la première date entrée par l'utilisateur).
         activeWeek = await this.createWeek(opData.site, opData.date);
+      } else if (opData.date < activeWeek.start_date) {
+        // Une semaine active existe déjà mais la date saisie lui est
+        // antérieure : on recule le début de la semaine jusqu'à cette date,
+        // toujours selon la même règle.
+        activeWeek = await this.shiftWeekStart(activeWeek, opData.date);
       }
       weekId = activeWeek.id;
     }
-    
+
     const finalizedOp: Operation = {
       ...opData,
       id,
@@ -423,9 +548,6 @@ export class CahierService {
       console.error('Error saving operation:', err);
       // Rollback: l'opération n'a pas été correctement persistée, on ne ment pas à l'UI
       this._operations.set(previousOperations);
-      // Les erreurs Supabase (PostgrestError) ne sont pas des instances d'Error :
-      // il faut extraire leur `message` explicitement, sinon on perd la vraie cause
-      // et on retombe systématiquement sur le message générique.
       const message = err instanceof Error
         ? err.message
         : (typeof err === 'object' && err !== null && 'message' in err)
@@ -449,7 +571,7 @@ export class CahierService {
         weekId = activeWeek.id;
       }
     }
-    
+
     const draftOp: Operation = {
       site: opData.site || '',
       type: (opData.type || 'Chargement') as Operation['type'],
@@ -715,7 +837,7 @@ export class CahierService {
       if (dateParts.length < 2) return;
       const year = dateParts[0];
       const monthNum = parseInt(dateParts[1], 10);
-      
+
       const monthsFrench = [
         'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
         'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
