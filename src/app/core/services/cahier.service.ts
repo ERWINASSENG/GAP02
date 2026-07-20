@@ -124,9 +124,21 @@ export class CahierService {
   }
 
   /**
-   * Initializes a new work week of 6 days for a site starting at a specific date
+   * Initialise une nouvelle semaine de travail de 6 jours pour un site, à
+   * partir d'une date de début choisie manuellement par l'utilisateur.
+   * Si aucune semaine active n'existe, la première opération saisie peut
+   * servir de point de départ, mais la semaine reste limitée à 6 jours.
    */
   async createWeek(site: string, startDateStr: string): Promise<WorkWeek> {
+    if (!startDateStr) {
+      throw new Error('Veuillez choisir une date de début pour la semaine.');
+    }
+
+    const existingActive = this.getActiveWeek(site);
+    if (existingActive) {
+      throw new Error(`Une semaine active existe déjà pour le site ${site} (du ${existingActive.start_date} au ${existingActive.end_date}).`);
+    }
+
     const user = this.authService.currentUser();
     const id = crypto.randomUUID();
 
@@ -327,7 +339,6 @@ export class CahierService {
   validateOperationDate(site: string, dateStr: string): { allowed: boolean; reason?: string; activeWeek?: WorkWeek } {
     const active = this.getActiveWeek(site);
     if (!active) {
-      // No active week, so we are allowed to insert (this operation will automatically create the week)
       return { allowed: true };
     }
 
@@ -467,13 +478,10 @@ export class CahierService {
     if (!weekId) {
       let activeWeek = this.getActiveWeek(opData.site);
       if (!activeWeek) {
-        // Aucune semaine active : elle démarre à la date saisie (règle métier :
-        // la semaine commence à la première date entrée par l'utilisateur).
-        activeWeek = await this.createWeek(opData.site, opData.date);
+        const initialStartDate = opData.date;
+        const createdWeek = await this.createWeek(opData.site, initialStartDate);
+        activeWeek = createdWeek;
       } else if (opData.date < activeWeek.start_date) {
-        // Une semaine active existe déjà mais la date saisie lui est
-        // antérieure : on recule le début de la semaine jusqu'à cette date,
-        // toujours selon la même règle.
         activeWeek = await this.shiftWeekStart(activeWeek, opData.date);
       }
       weekId = activeWeek.id;

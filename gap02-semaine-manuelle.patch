@@ -1,0 +1,127 @@
+diff --git a/src/app/core/services/cahier.service.ts b/src/app/core/services/cahier.service.ts
+index c4b1f6d..87b109e 100644
+--- a/src/app/core/services/cahier.service.ts
++++ b/src/app/core/services/cahier.service.ts
+@@ -124,9 +124,22 @@ export class CahierService {
+   }
+ 
+   /**
+-   * Initializes a new work week of 6 days for a site starting at a specific date
++   * Initialise une nouvelle semaine de travail de 6 jours pour un site, à
++   * partir d'une date de début choisie manuellement par l'utilisateur
++   * (règle métier : c'est l'utilisateur qui décide du jour de démarrage,
++   * via un sélecteur de date dans l'interface — il n'y a plus de création
++   * automatique implicite basée sur la 1ère opération saisie).
+    */
+   async createWeek(site: string, startDateStr: string): Promise<WorkWeek> {
++    if (!startDateStr) {
++      throw new Error('Veuillez choisir une date de début pour la semaine.');
++    }
++
++    const existingActive = this.getActiveWeek(site);
++    if (existingActive) {
++      throw new Error(`Une semaine active existe déjà pour le site ${site} (du ${existingActive.start_date} au ${existingActive.end_date}).`);
++    }
++
+     const user = this.authService.currentUser();
+     const id = crypto.randomUUID();
+ 
+@@ -467,9 +480,10 @@ export class CahierService {
+     if (!weekId) {
+       let activeWeek = this.getActiveWeek(opData.site);
+       if (!activeWeek) {
+-        // Aucune semaine active : elle démarre à la date saisie (règle métier :
+-        // la semaine commence à la première date entrée par l'utilisateur).
+-        activeWeek = await this.createWeek(opData.site, opData.date);
++        // Aucune semaine active : on ne la crée plus automatiquement.
++        // L'utilisateur doit d'abord démarrer une semaine en choisissant
++        // lui-même sa date de début (voir createWeek()).
++        throw new Error(`Aucune semaine de travail active pour le site ${opData.site}. Veuillez d'abord démarrer une semaine en choisissant sa date de début.`);
+       } else if (opData.date < activeWeek.start_date) {
+         // Une semaine active existe déjà mais la date saisie lui est
+         // antérieure : on recule le début de la semaine jusqu'à cette date,
+diff --git a/src/app/features/page/cahier/cahier.component.html b/src/app/features/page/cahier/cahier.component.html
+index a7cfbfe..9931cef 100644
+--- a/src/app/features/page/cahier/cahier.component.html
++++ b/src/app/features/page/cahier/cahier.component.html
+@@ -626,9 +626,17 @@
+                       </p>
+                     </div>
+                   } @else {
+-                    <p class="text-xs text-slate-400 dark:text-slate-500 italic leading-relaxed py-2">
+-                      S'initialisera automatiquement lors de votre prochaine saisie d'opération.
+-                    </p>
++                    <div class="space-y-2 py-1">
++                      <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
++                        Date de début de la semaine
++                      </label>
++                      <input
++                        type="date"
++                        [value]="getNewWeekStartDate(site)"
++                        (change)="onNewWeekStartDateChange(site, $any($event.target).value)"
++                        class="w-full text-xs px-2 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
++                      />
++                    </div>
+                   }
+                 </div>
+                 
+@@ -643,6 +651,16 @@
+                     
+                     <span>Clôturer la semaine</span>
+                   </button>
++                } @else {
++                  <button 
++                    type="button"
++                    (click)="startWeek(site)"
++                    [disabled]="isSaving()"
++                    class="w-full flex items-center justify-center gap-1 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-bold rounded-lg transition-all shadow-xs border border-transparent"
++                  >
++                    
++                    <span>Démarrer la semaine</span>
++                  </button>
+                 }
+               </div>
+             }
+diff --git a/src/app/features/page/cahier/cahier.component.ts b/src/app/features/page/cahier/cahier.component.ts
+index 97f0f12..e787796 100644
+--- a/src/app/features/page/cahier/cahier.component.ts
++++ b/src/app/features/page/cahier/cahier.component.ts
+@@ -48,6 +48,9 @@ export class CahierComponent implements OnInit {
+   readonly validationBlockTitle = signal<string>('Saisie Bloquée — Semaine active non clôturée');
+   readonly detailGroupingMode = signal<'week' | 'type'>('week');
+ 
++  // Date de début choisie par l'utilisateur pour démarrer une nouvelle semaine, par site
++  readonly newWeekStartDates = signal<Record<string, string>>({});
++
+   readonly activeWeeksBySite = computed(() => {
+     const weeks = this.cahierService.weeks();
+     const result: Record<string, WorkWeek> = {};
+@@ -887,6 +890,28 @@ export class CahierComponent implements OnInit {
+     }
+   }
+ 
++  // Retourne la date choisie par l'utilisateur pour démarrer la semaine du site (par défaut : aujourd'hui)
++  getNewWeekStartDate(site: string): string {
++    return this.newWeekStartDates()[site] || new Date().toISOString().split('T')[0];
++  }
++
++  onNewWeekStartDateChange(site: string, value: string) {
++    this.newWeekStartDates.update(dates => ({ ...dates, [site]: value }));
++  }
++
++  // Démarre manuellement une nouvelle semaine de travail pour un site à la date choisie
++  async startWeek(site: string) {
++    const startDate = this.getNewWeekStartDate(site);
++    this.isSaving.set(true);
++    try {
++      await this.cahierService.createWeek(site, startDate);
++    } catch (err) {
++      this.validationBlockMessage.set(err instanceof Error ? err.message : 'Erreur lors du démarrage de la semaine.');
++    } finally {
++      this.isSaving.set(false);
++    }
++  }
++
+   formatDateFr(dateStr: string): string {
+     if (!dateStr) return '';
+     const parts = dateStr.split('-');
