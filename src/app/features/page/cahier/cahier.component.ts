@@ -45,7 +45,7 @@ export class CahierComponent implements OnInit {
   readonly isSaving = signal<boolean>(false);
   readonly operationToDelete = signal<string | null>(null);
   readonly validationBlockMessage = signal<string | null>(null);
-  readonly validationBlockTitle = signal<string>('Saisie Bloquée — Semaine active non clôturée');
+  readonly validationBlockTitle = signal<string>('Saisie bloquée');
   readonly detailGroupingMode = signal<'week' | 'type'>('week');
 
   // Date de début choisie par l'utilisateur pour démarrer une nouvelle semaine, par site
@@ -149,8 +149,8 @@ export class CahierComponent implements OnInit {
   readonly operationForm = new FormGroup({
     site: new FormControl<string>('', { validators: [Validators.required], nonNullable: true }),
     type: new FormControl<string>('', { validators: [Validators.required], nonNullable: true }),
-    date: new FormControl<string>(new Date().toISOString().split('T')[0], { validators: [Validators.required], nonNullable: true }),
-    heure: new FormControl<string>(new Date().toTimeString().slice(0, 5), { validators: [Validators.required], nonNullable: true }),
+    date: new FormControl<string>('', { validators: [Validators.required], nonNullable: true }),
+    heure: new FormControl<string>('', { validators: [Validators.required], nonNullable: true }),
     quantite: new FormControl<number | null>(null),
     produit: new FormControl<string>(''),
     destination: new FormControl<string>(''),
@@ -461,8 +461,8 @@ export class CahierComponent implements OnInit {
     this.operationForm.reset({
       site: '',
       type: '',
-      date: new Date().toISOString().split('T')[0],
-      heure: new Date().toTimeString().slice(0, 5),
+      date: '',
+      heure: '',
       quantite: null,
       produit: '',
       destination: '',
@@ -581,11 +581,13 @@ export class CahierComponent implements OnInit {
         });
       }
 
+      const operationDate = rawItems.find(item => !!item.date)?.date || val.date || '';
+
       const draftData: Partial<Operation> = {
         id: this.activeDraftId() || undefined,
         site: val.site || undefined,
         type: val.type as Operation['type'] || undefined,
-        date: val.date || undefined,
+        date: operationDate || undefined,
         heure: val.heure || undefined,
         details: val.details || undefined,
         quantite: val.quantite !== null ? val.quantite : undefined,
@@ -708,10 +710,24 @@ export class CahierComponent implements OnInit {
     }
   }
 
+  canSubmitOperation(): boolean {
+    const formValue = this.operationForm.getRawValue();
+    if (!formValue.site || !formValue.type || !formValue.date || !formValue.heure) {
+      return false;
+    }
+
+    const hasItems = (formValue.items || []).some(item => {
+      const hasContent = !!((item as Partial<OperationItem> | undefined)?.produit || (item as Partial<OperationItem> | undefined)?.qte || (item as Partial<OperationItem> | undefined)?.pu || (item as Partial<OperationItem> | undefined)?.montant || (item as Partial<OperationItem> | undefined)?.dn);
+      return hasContent;
+    });
+
+    return hasItems || this.itemsFormArray.length === 0;
+  }
+
   // Submits the newly created operation
   async onSubmit() {
     if (this.isSaving()) return;
-    if (this.operationForm.invalid) {
+    if (!this.canSubmitOperation()) {
       this.operationForm.markAllAsTouched();
       return;
     }
@@ -719,8 +735,8 @@ export class CahierComponent implements OnInit {
     const val = this.operationForm.getRawValue();
     const validation = this.cahierService.validateOperationDate(val.site, val.date);
     if (!validation.allowed) {
-      this.validationBlockTitle.set('Saisie Bloquée — Semaine active non clôturée');
-      this.validationBlockMessage.set(validation.reason || 'Saisie bloquée.');
+      this.validationBlockTitle.set('Saisie bloquée');
+      this.validationBlockMessage.set(null);
       return;
     }
 
@@ -746,11 +762,13 @@ export class CahierComponent implements OnInit {
         });
       }
 
+      const operationDate = rawItems.find(item => !!item.date)?.date || val.date || '';
+
       const opData: Omit<Operation, 'id' | 'collaborateur'> & { id?: string } = {
         id: this.activeDraftId() || undefined,
         site: val.site,
         type: val.type as Operation['type'],
-        date: val.date,
+        date: operationDate,
         heure: val.heure,
         details: val.details || undefined,
         items: rawItems.map(item => ({
@@ -890,9 +908,9 @@ export class CahierComponent implements OnInit {
     }
   }
 
-  // Retourne la date choisie par l'utilisateur pour démarrer la semaine du site (par défaut : aujourd'hui)
+  // Retourne la date choisie par l'utilisateur pour démarrer la semaine du site
   getNewWeekStartDate(site: string): string {
-    return this.newWeekStartDates()[site] || new Date().toISOString().split('T')[0];
+    return this.newWeekStartDates()[site] || '';
   }
 
   onNewWeekStartDateChange(site: string, value: string) {
@@ -934,7 +952,12 @@ export class CahierComponent implements OnInit {
     ops.forEach(op => {
       let weekId = op.week_id;
       let week = weekId ? weekMap.get(weekId) : undefined;
-      
+
+      if (week && (!op.site || op.date < week.start_date || op.date > week.end_date)) {
+        week = undefined;
+        weekId = undefined;
+      }
+
       if (!week && op.site) {
         week = weeks.find(w => w.site === op.site && op.date >= w.start_date && op.date <= w.end_date);
         weekId = week?.id;

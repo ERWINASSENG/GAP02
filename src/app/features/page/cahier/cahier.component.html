@@ -158,31 +158,6 @@
             @if (currentStep() === 3) {
               <div class="space-y-6 animate-slide-in" id="step-3-content">
 
-                <!-- Blocage de semaine d'intervention non clôturée -->
-                @if (dateValidationWarning()?.allowed === false) {
-                  <div class="p-4 bg-amber-500/10 border border-amber-500/20 text-amber-800 dark:text-amber-400 rounded-2xl flex items-start gap-3 animate-fade-in" id="wizard-blocking-warning">
-                    
-                    <div class="space-y-1">
-                      <p class="text-sm font-bold">Semaine de travail active non clôturée</p>
-                      <p class="text-xs leading-relaxed">
-                        {{ dateValidationWarning()?.reason }}
-                      </p>
-                      <div class="pt-1.5">
-                        <button 
-                          type="button" 
-                          (click)="closeWeek(dateValidationWarning()?.activeWeek?.id!)"
-                          [disabled]="!canCloseWeek(dateValidationWarning()?.activeWeek)"
-                          [title]="!canCloseWeek(dateValidationWarning()?.activeWeek) ? 'La semaine n\'est pas encore terminée' : ''"
-                          class="px-3 py-1 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-bold rounded-lg shadow-xs transition-all cursor-pointer flex items-center gap-1"
-                        >
-                          
-                          <span>Clôturer la semaine en cours</span>
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                }
-
                 <!-- Dynamic Items Table -->
                 <div class="space-y-4" id="operation-table-section">
                   <div class="flex items-center justify-end">
@@ -534,7 +509,7 @@
                 <button 
                   type="button" 
                   (click)="onSubmit()"
-                  [disabled]="operationForm.invalid || isSaving()"
+                  [disabled]="!canSubmitOperation() || isSaving()"
                   class="px-2 py-2 sm:px-4 sm:py-2 bg-emerald-600 hover:bg-emerald-700 text-white disabled:bg-slate-100 dark:disabled:bg-slate-800 disabled:text-slate-400 dark:disabled:text-slate-500 disabled:border-slate-200 dark:disabled:border-slate-700/50 text-[10px] sm:text-[11px] font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1 shadow-sm hover:shadow-md border border-transparent shrink-0 disabled:cursor-not-allowed"
                 >
                   @if (isSaving()) {
@@ -622,7 +597,7 @@
                         Au {{ formatDateFr(activeWeek.end_date) }}
                       </p>
                       <p class="text-[10px] text-slate-400 dark:text-slate-500 italic mt-1 leading-normal">
-                        Saisie bloquée au-delà du {{ formatDateFr(activeWeek.end_date) }}
+                        Semaine du {{ formatDateFr(activeWeek.start_date) }} au {{ formatDateFr(activeWeek.end_date) }} (6 jours)
                       </p>
                     </div>
                   } @else {
