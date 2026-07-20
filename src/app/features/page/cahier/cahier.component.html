@@ -626,9 +626,17 @@
                       </p>
                     </div>
                   } @else {
-                    <p class="text-xs text-slate-400 dark:text-slate-500 italic leading-relaxed py-2">
-                      S'initialisera automatiquement lors de votre prochaine saisie d'opération.
-                    </p>
+                    <div class="space-y-2 py-1">
+                      <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+                        Date de début de la semaine
+                      </label>
+                      <input
+                        type="date"
+                        [value]="getNewWeekStartDate(site)"
+                        (change)="onNewWeekStartDateChange(site, $any($event.target).value)"
+                        class="w-full text-xs px-2 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                      />
+                    </div>
                   }
                 </div>
                 
@@ -642,6 +650,16 @@
                   >
                     
                     <span>Clôturer la semaine</span>
+                  </button>
+                } @else {
+                  <button 
+                    type="button"
+                    (click)="startWeek(site)"
+                    [disabled]="isSaving()"
+                    class="w-full flex items-center justify-center gap-1 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-bold rounded-lg transition-all shadow-xs border border-transparent"
+                  >
+                    
+                    <span>Démarrer la semaine</span>
                   </button>
                 }
               </div>

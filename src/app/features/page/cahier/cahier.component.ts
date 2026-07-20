@@ -48,6 +48,9 @@ export class CahierComponent implements OnInit {
   readonly validationBlockTitle = signal<string>('Saisie Bloquée — Semaine active non clôturée');
   readonly detailGroupingMode = signal<'week' | 'type'>('week');
 
+  // Date de début choisie par l'utilisateur pour démarrer une nouvelle semaine, par site
+  readonly newWeekStartDates = signal<Record<string, string>>({});
+
   readonly activeWeeksBySite = computed(() => {
     const weeks = this.cahierService.weeks();
     const result: Record<string, WorkWeek> = {};
@@ -882,6 +885,28 @@ export class CahierComponent implements OnInit {
     this.isSaving.set(true);
     try {
       await this.cahierService.closeWeek(weekId);
+    } finally {
+      this.isSaving.set(false);
+    }
+  }
+
+  // Retourne la date choisie par l'utilisateur pour démarrer la semaine du site (par défaut : aujourd'hui)
+  getNewWeekStartDate(site: string): string {
+    return this.newWeekStartDates()[site] || new Date().toISOString().split('T')[0];
+  }
+
+  onNewWeekStartDateChange(site: string, value: string) {
+    this.newWeekStartDates.update(dates => ({ ...dates, [site]: value }));
+  }
+
+  // Démarre manuellement une nouvelle semaine de travail pour un site à la date choisie
+  async startWeek(site: string) {
+    const startDate = this.getNewWeekStartDate(site);
+    this.isSaving.set(true);
+    try {
+      await this.cahierService.createWeek(site, startDate);
+    } catch (err) {
+      this.validationBlockMessage.set(err instanceof Error ? err.message : 'Erreur lors du démarrage de la semaine.');
     } finally {
       this.isSaving.set(false);
     }
