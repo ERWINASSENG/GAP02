@@ -82,6 +82,7 @@ describe('CahierService', () => {
       created_at: '2026-07-20T00:00:00.000Z'
     };
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     spyOn(service as any, 'getActiveWeek').and.returnValue(activeWeek);
 
     const result = service.validateOperationDate('Site A', '2026-07-20');

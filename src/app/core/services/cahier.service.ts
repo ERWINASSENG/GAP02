@@ -334,6 +334,46 @@ export class CahierService {
   }
 
   /**
+   * Réouvre une semaine de travail (met is_closed à false et closed_at à null).
+   * Agit sur _adminWeeks et _weeks.
+   */
+  async adminReopenWeek(weekId: string): Promise<{ success: boolean; error?: string }> {
+    const previousAdminWeeks = this._adminWeeks();
+    const previousWeeks = this._weeks();
+
+    // Mise à jour optimiste
+    const updatedAdmin = previousAdminWeeks.map(w =>
+      w.id === weekId ? { ...w, is_closed: false, closed_at: undefined } : w
+    );
+    const updatedUser = previousWeeks.map(w =>
+      w.id === weekId ? { ...w, is_closed: false, closed_at: undefined } : w
+    );
+
+    this._adminWeeks.set(updatedAdmin);
+    this._weeks.set(updatedUser);
+
+    try {
+      const { error } = await this.supabaseService.client
+        .from('cahier_weeks')
+        .update({ is_closed: false, closed_at: null })
+        .eq('id', weekId);
+
+      if (error) throw error;
+    } catch (err) {
+      console.error('Error reopening week (admin):', err);
+      // Rollback
+      this._adminWeeks.set(previousAdminWeeks);
+      this._weeks.set(previousWeeks);
+      const message = (typeof err === 'object' && err !== null && 'message' in err)
+        ? String((err as { message?: unknown }).message)
+        : 'Erreur lors de la réouverture de la semaine.';
+      return { success: false, error: message };
+    }
+
+    return { success: true };
+  }
+
+  /**
    * Validates if a date can be inserted for a specific site's week
    */
   validateOperationDate(site: string, dateStr: string): { allowed: boolean; reason?: string; activeWeek?: WorkWeek } {
