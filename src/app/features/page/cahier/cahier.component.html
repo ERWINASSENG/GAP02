@@ -4,7 +4,9 @@
     <!-- Aucun site spécifié : Affichage d'un écran d'accès restreint poli et professionnel -->
     <div class="flex flex-col items-center justify-center py-16 px-4 text-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-xs space-y-5 animate-fade-in" id="no-site-error-container">
       <div class="w-16 h-16 rounded-2xl bg-amber-500/10 dark:bg-amber-500/5 flex items-center justify-center text-amber-500" id="no-site-icon">
-        
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-8 h-8">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
+        </svg>
       </div>
       
       <div class="max-w-md space-y-2">
@@ -19,7 +21,9 @@
 
       <div class="pt-2">
         <div class="inline-flex items-center gap-2 px-3 py-1.5 bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-500 dark:text-slate-400 font-mono">
-          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25a3 3 0 0 1 3 3m3 0a6 6 0 0 1-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1 1 21.75 8.25Z" />
+          </svg>
           <span>ID de session : {{ authService.currentUser()?.id }}</span>
         </div>
       </div>
@@ -39,7 +43,9 @@
             class="p-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg transition-all cursor-pointer border border-slate-200 dark:border-slate-700 flex items-center justify-center focus:outline-hidden disabled:opacity-50 disabled:cursor-not-allowed"
             aria-label="Retourner à la liste"
           >
-            
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
+            </svg>
           </button>
           <div>
             <h1 class="text-lg font-bold text-slate-900 dark:text-white tracking-tight">
@@ -76,10 +82,15 @@
                           'bg-indigo-50 border-indigo-300 text-indigo-700 dark:bg-indigo-950/40 dark:border-indigo-500/60 dark:text-indigo-300 ring-2 ring-indigo-500/20': operationForm.value.site === siteOption,
                           'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300': operationForm.value.site !== siteOption
                         }">
-                        
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 shrink-0 text-slate-400">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25s-7.5-4.108-7.5-11.25a7.5 7.5 0 1 1 15 0Z" />
+                        </svg>
                         <span>{{ siteOption }}</span>
                         @if (operationForm.value.site === siteOption) {
-                          
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                          </svg>
                         }
                       </button>
                     }
@@ -105,10 +116,14 @@
                           'bg-indigo-50 border-indigo-300 text-indigo-700 dark:bg-indigo-950/40 dark:border-indigo-500/60 dark:text-indigo-300 ring-2 ring-indigo-500/20': operationForm.value.type === typeOption,
                           'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300': operationForm.value.type !== typeOption
                         }">
-                        
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 shrink-0 text-slate-400">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 0 1 0 3.75H5.625a1.875 1.875 0 0 1 0-3.75Z" />
+                        </svg>
                         <span>{{ typeOption }}</span>
                         @if (operationForm.value.type === typeOption) {
-                          
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                          </svg>
                         }
                       </button>
                     }
@@ -132,7 +147,9 @@
                         }"
                         id="btn-wagon-ble"
                       >
-                        
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-3.5 h-3.5 shrink-0 text-slate-400">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="m20.25 7.5-.625 10.632a2.25 2.25 0 0 1-2.247 2.118H6.622a2.25 2.25 0 0 1-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125Z" />
+                        </svg>
                         <span>Blé</span>
                       </button>
                       <button 
@@ -145,7 +162,9 @@
                         }"
                         id="btn-wagon-farine"
                       >
-                        
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-3.5 h-3.5 shrink-0 text-slate-400">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="m20.25 7.5-.625 10.632a2.25 2.25 0 0 1-2.247 2.118H6.622a2.25 2.25 0 0 1-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125Z" />
+                        </svg>
                         <span>Farine</span>
                       </button>
                     </div>
@@ -158,31 +177,6 @@
             @if (currentStep() === 3) {
               <div class="space-y-6 animate-slide-in" id="step-3-content">
 
-                <!-- Blocage de semaine d'intervention non clôturée -->
-                @if (dateValidationWarning()?.allowed === false) {
-                  <div class="p-4 bg-amber-500/10 border border-amber-500/20 text-amber-800 dark:text-amber-400 rounded-2xl flex items-start gap-3 animate-fade-in" id="wizard-blocking-warning">
-                    
-                    <div class="space-y-1">
-                      <p class="text-sm font-bold">Semaine de travail active non clôturée</p>
-                      <p class="text-xs leading-relaxed">
-                        {{ dateValidationWarning()?.reason }}
-                      </p>
-                      <div class="pt-1.5">
-                        <button 
-                          type="button" 
-                          (click)="closeWeek(dateValidationWarning()?.activeWeek?.id!)"
-                          [disabled]="!canCloseWeek(dateValidationWarning()?.activeWeek)"
-                          [title]="!canCloseWeek(dateValidationWarning()?.activeWeek) ? 'La semaine n\'est pas encore terminée' : ''"
-                          class="px-3 py-1 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-bold rounded-lg shadow-xs transition-all cursor-pointer flex items-center gap-1"
-                        >
-                          
-                          <span>Clôturer la semaine en cours</span>
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                }
-
                 <!-- Dynamic Items Table -->
                 <div class="space-y-4" id="operation-table-section">
                   <div class="flex items-center justify-end">
@@ -191,7 +185,9 @@
                       (click)="addItemRow()"
                       class="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 text-xs font-semibold rounded-xl transition-all cursor-pointer border border-indigo-200/50 dark:border-indigo-800/40 focus:outline-hidden"
                     >
-                      
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 shrink-0 text-indigo-600 dark:text-indigo-400">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                      </svg>
                       <span>Ajouter une ligne</span>
                     </button>
                   </div>
@@ -236,9 +232,9 @@
                                   (change)="onGlobalPrefixChange($any($event.target).value)"
                                   class="px-2 py-1 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-800 dark:text-slate-100 focus:outline-hidden focus:ring-1 focus:ring-indigo-500/20"
                                 >
-                                  <option value="DN">DN</option>
-                                  <option value="LTI">LTI</option>
-                                  <option value="ISTI">ISTI</option>
+                                  <option value="DN" class="bg-white text-slate-900 dark:bg-slate-900 dark:text-white font-bold">DN</option>
+                                  <option value="LTI" class="bg-white text-slate-900 dark:bg-slate-900 dark:text-white font-bold">LTI</option>
+                                  <option value="ISTI" class="bg-white text-slate-900 dark:bg-slate-900 dark:text-white font-bold">ISTI</option>
                                 </select>
                               </div>
                             </th>
@@ -378,6 +374,7 @@
                                       (click)="selectProductSuggestion($index, suggestion)"
                                       class="w-full text-left px-3 py-2 text-sm text-slate-700 dark:text-slate-100 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
                                       role="option"
+                                      aria-selected="false"
                                     >
                                       {{ suggestion }}
                                     </button>
@@ -428,7 +425,9 @@
                                 class="p-2 text-slate-400 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all cursor-pointer inline-flex items-center justify-center focus:outline-hidden"
                                 title="Supprimer cette ligne"
                               >
-                                
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                                  <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                                </svg>
                               </button>
                             }
                           </td>
@@ -516,7 +515,9 @@
                 [disabled]="isSaving()"
                 class="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs sm:text-sm font-semibold rounded-xl transition-all cursor-pointer border border-slate-200 dark:border-slate-700 flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 shrink-0 text-slate-500">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
+                </svg>
                 <span>Précédent</span>
               </button>
               <div></div>
@@ -527,14 +528,16 @@
                 [disabled]="isSaving()"
                 class="px-2 py-2 sm:px-3 sm:py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-[10px] sm:text-[11px] font-bold rounded-lg transition-all cursor-pointer border border-slate-200 dark:border-slate-700 flex items-center gap-1 shadow-xs hover:shadow-sm shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3.5 h-3.5 shrink-0 text-slate-500">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
+                </svg>
                 <span class="hidden sm:inline">Précédent</span>
               </button>
               <div class="flex flex-wrap items-center gap-1 sm:gap-2 ml-auto">
                 <button 
                   type="button" 
                   (click)="onSubmit()"
-                  [disabled]="operationForm.invalid || isSaving()"
+                  [disabled]="!canSubmitOperation() || isSaving()"
                   class="px-2 py-2 sm:px-4 sm:py-2 bg-emerald-600 hover:bg-emerald-700 text-white disabled:bg-slate-100 dark:disabled:bg-slate-800 disabled:text-slate-400 dark:disabled:text-slate-500 disabled:border-slate-200 dark:disabled:border-slate-700/50 text-[10px] sm:text-[11px] font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1 shadow-sm hover:shadow-md border border-transparent shrink-0 disabled:cursor-not-allowed"
                 >
                   @if (isSaving()) {
@@ -544,7 +547,9 @@
                     </svg>
                     <span>Enregistrement...</span>
                   } @else {
-                    
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-3.5 h-3.5 shrink-0">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                    </svg>
                     <span>Enregistrer</span>
                   }
                 </button>
@@ -573,7 +578,9 @@
         class="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white text-sm font-semibold rounded-xl transition-all cursor-pointer shadow-sm hover:shadow-md focus:outline-hidden"
         id="btn-new-operation"
       >
-        
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 shrink-0">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+        </svg>
         <span>Nouvelle opération</span>
       </button>
     </div>
@@ -587,7 +594,9 @@
         <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-5 space-y-4 shadow-xs" id="weekly-status-section">
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-2 text-slate-900 dark:text-white font-bold text-sm">
-              
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-slate-500">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
+              </svg>
               <span>Suivi des semaines de travail actives (6 jours)</span>
             </div>
           </div>
@@ -622,15 +631,19 @@
                         Au {{ formatDateFr(activeWeek.end_date) }}
                       </p>
                       <p class="text-[10px] text-slate-400 dark:text-slate-500 italic mt-1 leading-normal">
-                        Saisie bloquée au-delà du {{ formatDateFr(activeWeek.end_date) }}
+                        Semaine du {{ formatDateFr(activeWeek.start_date) }} au {{ formatDateFr(activeWeek.end_date) }} (6 jours)
                       </p>
                     </div>
                   } @else {
                     <div class="space-y-2 py-1">
-                      <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+                      <label 
+                        for="week-start-{{site}}"
+                        class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide"
+                      >
                         Date de début de la semaine
                       </label>
                       <input
+                        id="week-start-{{site}}"
                         type="date"
                         [value]="getNewWeekStartDate(site)"
                         (change)="onNewWeekStartDateChange(site, $any($event.target).value)"
@@ -648,7 +661,9 @@
                     [title]="!canCloseWeek(activeWeek) ? 'La semaine n\'est pas encore terminée' : ''"
                     class="w-full flex items-center justify-center gap-1 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-bold rounded-lg transition-all shadow-xs border border-transparent"
                   >
-                    
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3.5 h-3.5 shrink-0">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
+                    </svg>
                     <span>Clôturer la semaine</span>
                   </button>
                 } @else {
@@ -658,7 +673,9 @@
                     [disabled]="isSaving()"
                     class="w-full flex items-center justify-center gap-1 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-bold rounded-lg transition-all shadow-xs border border-transparent"
                   >
-                    
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3.5 h-3.5 shrink-0">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 10.5V6.75a4.5 4.5 0 1 1 9 0v3.75M3.75 21.75h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H3.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
+                    </svg>
                     <span>Démarrer la semaine</span>
                   </button>
                 }
@@ -671,7 +688,9 @@
         @if (cahierService.drafts().length > 0) {
           <div class="bg-amber-500/5 border border-amber-500/20 rounded-2xl p-4 sm:p-5 space-y-3" id="drafts-section">
             <div class="flex items-center gap-2 text-amber-800 dark:text-amber-400 font-bold text-sm">
-              
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-amber-600 dark:text-amber-400">
+                <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
+              </svg>
               <span>Brouillons en cours ({{ cahierService.drafts().length }})</span>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -680,7 +699,10 @@
                   <div class="space-y-1">
                     <div class="flex justify-between items-start gap-2">
                       <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-[10px] font-semibold text-slate-700 dark:text-slate-300">
-                        
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-3 h-3 text-slate-500">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25s-7.5-4.108-7.5-11.25a7.5 7.5 0 1 1 15 0Z" />
+                        </svg>
                         {{ draft.site || 'Site non défini' }}
                       </span>
                       <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400">
@@ -688,7 +710,10 @@
                       </span>
                     </div>
                     <h4 class="text-sm font-bold text-slate-800 dark:text-white flex items-center gap-1.5 mt-2">
-                      
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 text-slate-500 shrink-0">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9.568 3H5.25A2.25 2.25 0 0 0 3 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581a1.5 1.5 0 0 0 2.122 0l4.318-4.318a1.5 1.5 0 0 0 0-2.122L11.16 3.659A2.25 2.25 0 0 0 9.568 3Z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 6h.008v.008H6V6Z" />
+                      </svg>
                       {{ draft.type || 'Type non défini' }}
                     </h4>
                     <p class="text-[11px] text-slate-500 dark:text-slate-400 font-mono">
@@ -706,14 +731,18 @@
                       class="p-1 text-slate-400 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all cursor-pointer flex items-center justify-center"
                       title="Supprimer ce brouillon"
                     >
-                      
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                      </svg>
                     </button>
                     <button 
                       (click)="editDraft(draft)"
                       class="inline-flex items-center gap-1 px-3 py-1 bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold rounded-lg transition-all cursor-pointer shadow-xs hover:shadow-sm"
                     >
                       <span>Reprendre</span>
-                      
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3.5 h-3.5 shrink-0">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
+                      </svg>
                     </button>
                   </div>
                 </div>
@@ -726,7 +755,9 @@
 
         @if (cahierService.monthlySummaries().length === 0) {
           <div class="bg-white dark:bg-slate-900 border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl p-12 text-center shadow-xs transition-all" id="empty-monthly-state">
-            
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-12 h-12 text-slate-400 dark:text-slate-500 mx-auto mb-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+            </svg>
             <p class="text-slate-800 dark:text-slate-200 font-semibold">Aucune opération enregistrée</p>
             <p class="text-slate-500 dark:text-slate-400 text-sm mt-1 max-w-sm mx-auto">
               Commencez par ajouter votre première opération journalière à l'aide du bouton ci-dessus.
@@ -756,9 +787,12 @@
                     <td class="px-6 py-4 border border-slate-300 dark:border-slate-700 font-semibold text-slate-900 dark:text-white">
                       {{ summary.month }}
                     </td>
-                    <td class="px-6 py-4 border border-slate-300 dark:border-slate-700">
+                     <td class="px-6 py-4 border border-slate-300 dark:border-slate-700">
                       <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-xs font-medium text-slate-700 dark:text-slate-300 border border-slate-200/50 dark:border-slate-700/50">
-                        
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-3.5 h-3.5 text-slate-500 dark:text-slate-400">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25s-7.5-4.108-7.5-11.25a7.5 7.5 0 1 1 15 0Z" />
+                        </svg>
                         Site {{ summary.site }}
                       </span>
                     </td>
@@ -771,7 +805,10 @@
                         class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-semibold rounded-lg transition-all cursor-pointer border border-slate-200 dark:border-slate-700"
                       >
                         <span>Voir détail</span>
-                        
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3.5 h-3.5 shrink-0">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                        </svg>
                       </button>
                     </td>
                   </tr>
@@ -792,7 +829,9 @@
                 class="p-1 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg transition-all cursor-pointer border border-slate-200 dark:border-slate-700 flex items-center justify-center focus:outline-hidden"
                 aria-label="Retourner à la vue mensuelle"
               >
-                
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
+                </svg>
               </button>
               <div>
                 <h2 class="text-sm font-bold text-slate-900 dark:text-white whitespace-nowrap uppercase">
@@ -835,6 +874,9 @@
                 class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-xl transition-all cursor-pointer shadow-sm hover:shadow-md border border-transparent"
                 title="Exporter tout le rapport mensuel en format Excel"
               >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3.5 h-3.5 shrink-0">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m.75 12 3 3m0 0 3-3m-3 3v-6m-1.5-9H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+                </svg>
                 <span>Exporter en XLSX</span>
               </button>
               <button 
@@ -842,6 +884,9 @@
                 class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl transition-all cursor-pointer shadow-sm hover:shadow-md border border-transparent"
                 title="Exporter tout le rapport mensuel en format Word"
               >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3.5 h-3.5 shrink-0">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m.75 12 3 3m0 0 3-3m-3 3v-6m-1.5-9H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+                </svg>
                 <span>Exporter en DOCX</span>
               </button>
             </div>
@@ -857,7 +902,9 @@
                 
                 <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
                   <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-xs font-bold text-indigo-700 dark:text-indigo-400 shadow-2xs">
-                    
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-3.5 h-3.5 shrink-0">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
+                    </svg>
                     {{ weekGroup.label }}
                   </span>
                   @if (weekGroup.week && !weekGroup.week.is_closed) {
@@ -868,7 +915,9 @@
                       [title]="!canCloseWeek(weekGroup.week) ? 'La semaine n\'est pas encore terminée' : ''"
                       class="px-3 py-1 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-bold rounded-lg transition-all flex items-center gap-1"
                     >
-                      
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3.5 h-3.5 shrink-0">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
+                      </svg>
                       <span>Clôturer la semaine</span>
                     </button>
                   }
@@ -928,14 +977,14 @@
                                       (change)="onActionChange($event, op)"
                                       class="px-2 py-1 text-xs bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg shadow-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-700 dark:text-slate-300 cursor-pointer max-w-[120px]"
                                     >
-                                      <option value="" disabled selected>Actions...</option>
-                                      <option value="edit">Modifier</option>
+                                      <option value="" disabled selected class="bg-white text-slate-500 dark:bg-slate-900 dark:text-slate-400">Actions...</option>
+                                      <option value="edit" class="bg-white text-slate-900 dark:bg-slate-900 dark:text-white">Modifier</option>
                                       @if (authService.currentUser()?.role === 'admin') {
-                                        <option value="excel">Excel</option>
-                                        <option value="pdf">PDF</option>
-                                        <option value="docx">Word</option>
+                                        <option value="excel" class="bg-white text-slate-900 dark:bg-slate-900 dark:text-white">Excel</option>
+                                        <option value="pdf" class="bg-white text-slate-900 dark:bg-slate-900 dark:text-white">PDF</option>
+                                        <option value="docx" class="bg-white text-slate-900 dark:bg-slate-900 dark:text-white">Word</option>
                                       }
-                                      <option value="delete" class="text-rose-600 dark:text-rose-400 font-semibold">Supprimer</option>
+                                      <option value="delete" class="bg-white text-rose-600 dark:bg-slate-900 dark:text-rose-400 font-semibold">Supprimer</option>
                                     </select>
                                   </div>
                                 </td>
@@ -1036,14 +1085,14 @@
                                   (change)="onActionChange($event, op)"
                                   class="px-2 py-1 text-xs bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg shadow-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-700 dark:text-slate-300 cursor-pointer max-w-[120px]"
                                 >
-                                  <option value="" disabled selected>Actions...</option>
-                                  <option value="edit">Modifier</option>
+                                  <option value="" disabled selected class="bg-white text-slate-500 dark:bg-slate-900 dark:text-slate-400">Actions...</option>
+                                  <option value="edit" class="bg-white text-slate-900 dark:bg-slate-900 dark:text-white">Modifier</option>
                                   @if (authService.currentUser()?.role === 'admin') {
-                                    <option value="excel">Excel</option>
-                                    <option value="pdf">PDF</option>
-                                    <option value="docx">Word</option>
+                                    <option value="excel" class="bg-white text-slate-900 dark:bg-slate-900 dark:text-white">Excel</option>
+                                    <option value="pdf" class="bg-white text-slate-900 dark:bg-slate-900 dark:text-white">PDF</option>
+                                    <option value="docx" class="bg-white text-slate-900 dark:bg-slate-900 dark:text-white">Word</option>
                                   }
-                                  <option value="delete" class="text-rose-600 dark:text-rose-400 font-semibold">Supprimer</option>
+                                  <option value="delete" class="bg-white text-rose-600 dark:bg-slate-900 dark:text-rose-400 font-semibold">Supprimer</option>
                                 </select>
                               </div>
                             </td>
@@ -1075,14 +1124,14 @@
                                 (change)="onActionChange($event, op)"
                                 class="px-2 py-1 text-xs bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg shadow-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-700 dark:text-slate-300 cursor-pointer max-w-[120px]"
                               >
-                                <option value="" disabled selected>Actions...</option>
-                                <option value="edit">Modifier</option>
+                                <option value="" disabled selected class="bg-white text-slate-500 dark:bg-slate-900 dark:text-slate-400">Actions...</option>
+                                <option value="edit" class="bg-white text-slate-900 dark:bg-slate-900 dark:text-white">Modifier</option>
                                 @if (authService.currentUser()?.role === 'admin') {
-                                  <option value="excel">Excel</option>
-                                  <option value="pdf">PDF</option>
-                                  <option value="docx">Word</option>
+                                  <option value="excel" class="bg-white text-slate-900 dark:bg-slate-900 dark:text-white">Excel</option>
+                                  <option value="pdf" class="bg-white text-slate-900 dark:bg-slate-900 dark:text-white">PDF</option>
+                                  <option value="docx" class="bg-white text-slate-900 dark:bg-slate-900 dark:text-white">Word</option>
                                 }
-                                <option value="delete" class="text-rose-600 dark:text-rose-400 font-semibold">Supprimer</option>
+                                <option value="delete" class="bg-white text-rose-600 dark:bg-slate-900 dark:text-rose-400 font-semibold">Supprimer</option>
                               </select>
                             </div>
                           </td>
@@ -1150,7 +1199,9 @@
       <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-xl relative z-10 transform transition-all duration-300 scale-100">
         <div class="flex items-start gap-4">
           <div class="p-3 bg-amber-500/10 text-amber-600 dark:text-amber-400 rounded-xl shrink-0">
-            
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+            </svg>
           </div>
           <div class="space-y-2 flex-1">
             <h3 class="text-base font-bold text-slate-900 dark:text-white">
@@ -1195,7 +1246,9 @@
       >
         <div class="flex items-start gap-4">
           <div class="p-3 bg-rose-500/10 text-rose-600 dark:text-rose-400 rounded-xl shrink-0">
-            
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+              <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+            </svg>
           </div>
           <div class="space-y-2 flex-1">
             <h3 id="delete-modal-title" class="text-base font-bold text-slate-900 dark:text-white">
@@ -1229,7 +1282,9 @@
               </svg>
               <span>Suppression...</span>
             } @else {
-              
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3.5 h-3.5 shrink-0">
+                <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+              </svg>
               <span>Supprimer</span>
             }
           </button>

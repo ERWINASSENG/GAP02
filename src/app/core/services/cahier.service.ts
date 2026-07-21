@@ -334,6 +334,46 @@ export class CahierService {
   }
 
   /**
+   * Réouvre une semaine de travail (met is_closed à false et closed_at à null).
+   * Agit sur _adminWeeks et _weeks.
+   */
+  async adminReopenWeek(weekId: string): Promise<{ success: boolean; error?: string }> {
+    const previousAdminWeeks = this._adminWeeks();
+    const previousWeeks = this._weeks();
+
+    // Mise à jour optimiste
+    const updatedAdmin = previousAdminWeeks.map(w =>
+      w.id === weekId ? { ...w, is_closed: false, closed_at: undefined } : w
+    );
+    const updatedUser = previousWeeks.map(w =>
+      w.id === weekId ? { ...w, is_closed: false, closed_at: undefined } : w
+    );
+
+    this._adminWeeks.set(updatedAdmin);
+    this._weeks.set(updatedUser);
+
+    try {
+      const { error } = await this.supabaseService.client
+        .from('cahier_weeks')
+        .update({ is_closed: false, closed_at: null })
+        .eq('id', weekId);
+
+      if (error) throw error;
+    } catch (err) {
+      console.error('Error reopening week (admin):', err);
+      // Rollback
+      this._adminWeeks.set(previousAdminWeeks);
+      this._weeks.set(previousWeeks);
+      const message = (typeof err === 'object' && err !== null && 'message' in err)
+        ? String((err as { message?: unknown }).message)
+        : 'Erreur lors de la réouverture de la semaine.';
+      return { success: false, error: message };
+    }
+
+    return { success: true };
+  }
+
+  /**
    * Validates if a date can be inserted for a specific site's week
    */
   validateOperationDate(site: string, dateStr: string): { allowed: boolean; reason?: string; activeWeek?: WorkWeek } {
@@ -342,16 +382,18 @@ export class CahierService {
       return { allowed: true };
     }
 
-    // Check if the date is strictly greater than start_date + 5 days (end_date)
-    if (dateStr > active.end_date) {
-      return {
-        allowed: false,
-        reason: `La date de l'opération (${dateStr}) dépasse la semaine de travail active de 6 jours du site ${site} (du ${active.start_date} au ${active.end_date}). Veuillez d'abord clôturer cette semaine.`,
-        activeWeek: active
-      };
+    // La semaine active est définie par sa date de début choisie et sa plage
+    // de 6 jours. Une opération est autorisée si elle tombe dans cette plage,
+    // mais une date plus tardive n'est pas rattachée à la semaine actuelle.
+    if (dateStr < active.start_date) {
+      return { allowed: true, activeWeek: active };
     }
 
-    return { allowed: true };
+    if (dateStr > active.end_date) {
+      return { allowed: true, activeWeek: active };
+    }
+
+    return { allowed: true, activeWeek: active };
   }
 
   /**
@@ -473,18 +515,24 @@ export class CahierService {
       throw new Error(validation.reason);
     }
 
-    // 2. Automatic weekly management : find or create active week
+    // 2. Automatic weekly management : attach the operation only to a week
+    // whose date range actually contains the operation date.
     let weekId = opData.week_id;
-    if (!weekId) {
-      let activeWeek = this.getActiveWeek(opData.site);
-      if (!activeWeek) {
-        const initialStartDate = opData.date;
-        const createdWeek = await this.createWeek(opData.site, initialStartDate);
-        activeWeek = createdWeek;
-      } else if (opData.date < activeWeek.start_date) {
-        activeWeek = await this.shiftWeekStart(activeWeek, opData.date);
+    if (!weekId && opData.site && opData.date) {
+      const operationDate = opData.date;
+      const matchingWeek = this._weeks().find(w =>
+        w.site === opData.site && operationDate >= w.start_date && operationDate <= w.end_date
+      );
+
+      if (matchingWeek) {
+        weekId = matchingWeek.id;
+      } else {
+        const activeWeek = this.getActiveWeek(opData.site);
+        if (activeWeek && operationDate < activeWeek.start_date) {
+          const shiftedWeek = await this.shiftWeekStart(activeWeek, operationDate);
+          weekId = shiftedWeek.id;
+        }
       }
-      weekId = activeWeek.id;
     }
 
     const finalizedOp: Operation = {
@@ -573,18 +621,27 @@ export class CahierService {
     const existing = this._operations().find(o => o.id === id);
 
     let weekId = opData.week_id;
-    if (!weekId && opData.site) {
-      const activeWeek = this.getActiveWeek(opData.site);
-      if (activeWeek) {
-        weekId = activeWeek.id;
+    if (!weekId && opData.site && opData.date) {
+      const operationDate = opData.date;
+      const matchingWeek = this._weeks().find(w =>
+        w.site === opData.site && operationDate >= w.start_date && operationDate <= w.end_date
+      );
+
+      if (matchingWeek) {
+        weekId = matchingWeek.id;
+      } else {
+        const activeWeek = this.getActiveWeek(opData.site);
+        if (activeWeek && operationDate < activeWeek.start_date) {
+          weekId = activeWeek.id;
+        }
       }
     }
 
     const draftOp: Operation = {
       site: opData.site || '',
       type: (opData.type || 'Chargement') as Operation['type'],
-      date: opData.date || new Date().toISOString().split('T')[0],
-      heure: opData.heure || new Date().toTimeString().slice(0, 5),
+      date: opData.date || '',
+      heure: opData.heure || '',
       details: opData.details || '',
       quantite: opData.quantite !== undefined ? opData.quantite : undefined,
       produit: opData.produit || '',

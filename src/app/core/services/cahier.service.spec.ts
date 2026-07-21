@@ -71,39 +71,22 @@ describe('CahierService', () => {
     service = TestBed.inject(CahierService);
   });
 
-  it('should create a week from the first operation date when no active week exists', async () => {
-    const createWeekSpy = spyOn(service, 'createWeek').and.callFake(async (_site: string, startDate: string) => ({
-      id: 'week-1',
-      site: 'Site A',
-      start_date: startDate,
-      end_date: '2026-07-20',
-      is_closed: false,
-      user_id: 'user-1',
-      created_at: '2026-07-20T00:00:00.000Z'
-    } as any));
-
-    const shiftWeekSpy = spyOn(service as any, 'shiftWeekStart').and.resolveTo({
+  it('should allow an operation date outside the current week range without blocking it', () => {
+    const activeWeek = {
       id: 'week-1',
       site: 'Site A',
       start_date: '2026-07-14',
-      end_date: '2026-07-20',
+      end_date: '2026-07-19',
       is_closed: false,
       user_id: 'user-1',
       created_at: '2026-07-20T00:00:00.000Z'
-    });
+    };
 
-    await service.addOperation({
-      site: 'Site A',
-      type: 'Intervention',
-      date: '2026-07-14',
-      heure: '08:00',
-      details: 'Première opération',
-      sonLevel: 'Moyen',
-      frequence: 'Basse',
-      items: []
-    } as any);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    spyOn(service as any, 'getActiveWeek').and.returnValue(activeWeek);
 
-    expect(createWeekSpy).toHaveBeenCalledWith('Site A', '2026-07-14');
-    expect(shiftWeekSpy).not.toHaveBeenCalled();
+    const result = service.validateOperationDate('Site A', '2026-07-20');
+
+    expect(result.allowed).toBeTrue();
   });
 });

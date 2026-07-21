@@ -5,7 +5,7 @@ import { CahierService } from '../../../core/services/cahier.service';
 import { PdfExportService } from '../../../core/services/pdf-export.service';
 import { ExcelExportService } from '../../../core/services/excel-export.service';
 import { DocxExportService } from '../../../core/services/docx-export.service';
-import { MonthlySummary, Operation, OperationItem, OPERATION_TYPES } from '../../../shared/models/cahier.model';
+import { MonthlySummary, Operation, OperationItem, OPERATION_TYPES, WorkWeek } from '../../../shared/models/cahier.model';
 import { AuthService } from '../../../core/services/auth.service';
 import { CreatedUser } from '../../../shared/models/auth.model';
 
@@ -32,6 +32,7 @@ export class AdminCahierViewComponent implements OnInit {
   private readonly authService = inject(AuthService);
 
   readonly summaries = this.cahierService.adminMonthlySummaries;
+  readonly adminWeeks = this.cahierService.adminWeeks;
 
   readonly sites = ['SCMC', 'TUSCANI', 'AFISA', 'AUTRE'];
   readonly operationTypes = OPERATION_TYPES;
@@ -385,5 +386,47 @@ export class AdminCahierViewComponent implements OnInit {
       return;
     }
     this.operationToDelete.set(null);
+  }
+
+  // --- Gestion des semaines ---
+  readonly isReopening = signal<boolean>(false);
+  readonly reopenError = signal<string | null>(null);
+  readonly weekToReopen = signal<WorkWeek | null>(null);
+
+  formatDateFr(dateStr: string): string {
+    if (!dateStr) return '';
+    const parts = dateStr.split('-');
+    if (parts.length !== 3) return dateStr;
+    return `${parts[2]}/${parts[1]}/${parts[0]}`;
+  }
+
+  confirmReopen(week: WorkWeek) {
+    this.reopenError.set(null);
+    this.weekToReopen.set(week);
+  }
+
+  cancelReopen() {
+    this.weekToReopen.set(null);
+  }
+
+  async reopenWeekConfirmed() {
+    const week = this.weekToReopen();
+    if (!week) return;
+
+    this.isReopening.set(true);
+    this.reopenError.set(null);
+
+    try {
+      const res = await this.cahierService.adminReopenWeek(week.id);
+      if (!res.success) {
+        this.reopenError.set(res.error || 'Erreur lors de la réouverture de la semaine.');
+      } else {
+        this.weekToReopen.set(null);
+      }
+    } catch (err) {
+      this.reopenError.set(err instanceof Error ? err.message : 'Une erreur inattendue est survenue.');
+    } finally {
+      this.isReopening.set(false);
+    }
   }
 }
