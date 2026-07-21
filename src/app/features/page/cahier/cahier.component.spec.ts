@@ -30,4 +30,21 @@ describe('CahierComponent', () => {
     component.closeModal();
     expect(component.isModalOpen()).toBeFalse();
   });
+
+  it('should allow submission when a filled row exists even without parent date and heure', () => {
+    component.operationForm.patchValue({ site: 'SCMC', type: 'Chargement', date: '', heure: '' });
+    component.itemsFormArray.push(component.createItemFormGroup('', '', 'Produit test'));
+
+    const firstRow = component.itemsFormArray.at(0) as FormGroup;
+    firstRow.patchValue({ produit: 'Produit test', qte: 10, pu: 5, montant: 50 });
+
+    expect(component.canSubmitOperation()).toBeTrue();
+  });
+
+  it('should keep submission disabled when there is no meaningful row content', () => {
+    component.operationForm.patchValue({ site: 'SCMC', type: 'Chargement', date: '', heure: '' });
+    component.itemsFormArray.push(component.createItemFormGroup('', '', ''));
+
+    expect(component.canSubmitOperation()).toBeFalse();
+  });
 });

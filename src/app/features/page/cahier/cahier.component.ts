@@ -721,7 +721,9 @@ export class CahierComponent implements OnInit {
 
   canSubmitOperation(): boolean {
     const formValue = this.operationForm.getRawValue();
-    if (!formValue.site || !formValue.type || !formValue.date || !formValue.heure) {
+    const hasSiteAndType = !!formValue.site && !!formValue.type;
+
+    if (!hasSiteAndType) {
       return false;
     }
 
