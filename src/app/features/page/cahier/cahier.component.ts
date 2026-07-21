@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, inject, signal, computed, OnInit, DestroyRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ReactiveFormsModule, FormGroup, FormControl, FormArray, Validators } from '@angular/forms';
+import { ReactiveFormsModule, FormGroup, FormControl, FormArray, Validators, AbstractControl } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CahierService } from '../../../core/services/cahier.service';
 import { AuthService } from '../../../core/services/auth.service';
@@ -136,7 +136,7 @@ export class CahierComponent implements OnInit {
   ]);
 
   readonly productSuggestions = signal<string[]>([]);
-  readonly activeProductRowIndex = signal<number | null>(null);
+  readonly activeProductRowRef = signal<FormGroup | null>(null);
 
   private normalizeProductString(s: string | null | undefined): string {
     return (s || '').toString().replace(/\s+/g, ' ').trim().toUpperCase();
@@ -257,7 +257,7 @@ export class CahierComponent implements OnInit {
       const query = this.normalizeProductString(value);
       if (!query) {
         this.productSuggestions.set([]);
-        this.activeProductRowIndex.set(null);
+        this.activeProductRowRef.set(null);
         return;
       }
 
@@ -265,18 +265,18 @@ export class CahierComponent implements OnInit {
         .filter(key => this.normalizeProductString(key).includes(query));
 
       this.productSuggestions.set(suggestions.slice(0, 6));
-      this.activeProductRowIndex.set(this.itemsFormArray.controls.indexOf(group));
+      this.activeProductRowRef.set(group);
     };
 
     const applyProductSelection = (product: string) => {
-      this.selectProductSuggestion(this.itemsFormArray.controls.indexOf(group), product);
+      this.selectProductSuggestion(group, product);
     };
 
     group.controls['produit'].valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(value => {
       const productValue = (value || '').toString();
       if (productValue.trim() === '') {
         this.productSuggestions.set([]);
-        this.activeProductRowIndex.set(null);
+        this.activeProductRowRef.set(null);
         return;
       }
 
@@ -361,8 +361,17 @@ export class CahierComponent implements OnInit {
     this.formValue.set(this.operationForm.value as OperationFormValue);
   }
 
-  selectProductSuggestion(rowIndex: number, product: string) {
-    const group = this.itemsFormArray.at(rowIndex) as FormGroup | null;
+  selectProductSuggestion(row: number | FormGroup | AbstractControl, product: string) {
+    let group: FormGroup | null = null;
+    if (typeof row === 'number') {
+      group = this.itemsFormArray.at(row) as FormGroup | null;
+    } else if (row instanceof FormGroup) {
+      group = row as FormGroup;
+    } else {
+      // row may be an AbstractControl passed from the template; find matching FormGroup reference
+      group = this.itemsFormArray.controls.find(ctrl => ctrl === row) as FormGroup | null;
+    }
+
     if (!group) {
       return;
     }
@@ -372,7 +381,7 @@ export class CahierComponent implements OnInit {
     group.controls['pu'].setValue(puValue, { emitEvent: false });
     group.controls['montant'].setValue((Number(group.controls['qte'].value) || 0) * (Number(puValue) || 0), { emitEvent: false });
     this.productSuggestions.set([]);
-    this.activeProductRowIndex.set(null);
+    this.activeProductRowRef.set(null);
     this.operationForm.updateValueAndValidity({ emitEvent: false });
   }
 
