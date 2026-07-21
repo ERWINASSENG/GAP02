@@ -382,15 +382,20 @@ export class CahierService {
       return { allowed: true };
     }
 
-    // La semaine active est définie par sa date de début choisie et sa plage
-    // de 6 jours. Une opération est autorisée si elle tombe dans cette plage,
-    // mais une date plus tardive n'est pas rattachée à la semaine actuelle.
     if (dateStr < active.start_date) {
-      return { allowed: true, activeWeek: active };
+      return {
+        allowed: false,
+        reason: `La date ne peut pas être antérieure au début de la semaine active (${active.start_date}).`,
+        activeWeek: active
+      };
     }
 
     if (dateStr > active.end_date) {
-      return { allowed: true, activeWeek: active };
+      return {
+        allowed: false,
+        reason: `La date ne peut pas être postérieure à la fin de la semaine active (${active.end_date}).`,
+        activeWeek: active
+      };
     }
 
     return { allowed: true, activeWeek: active };

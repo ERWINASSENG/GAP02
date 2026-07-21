@@ -13,17 +13,17 @@ export const routes: Routes = [
   {
     path: 'login',
     component: LoginComponent,
-    title: 'PortSync Pro - Connexion'
+    title: 'GAP APP - Connexion'
   },
   {
     path: 'reset',
     component: ResetComponent,
-    title: 'PortSync Pro - Réinitialisation de mot de passe'
+    title: 'GAP APP - Réinitialisation de mot de passe'
   },
   {
     path: 'reset-password',
     component: ResetComponent,
-    title: 'PortSync Pro - Réinitialisation de mot de passe'
+    title: 'GAP APP - Réinitialisation de mot de passe'
   },
   {
     path: '',
@@ -33,26 +33,26 @@ export const routes: Routes = [
       {
         path: 'dashboard',
         component: DashboardComponent,
-        title: 'PortSync Pro - Tableau de bord'
+        title: 'GAP APP - Tableau de bord'
       },
       {
         path: 'cahier',
         component: CahierComponent,
-        title: 'PortSync Pro - Cahier d\'Opérations'
+        title: 'GAP APP - Cahier d\'Opérations'
       },
       {
         path: 'admin/view',
         component: AdminCahierViewComponent,
         canActivate: [roleGuard],
         data: { roles: ['admin'] },
-        title: 'PortSync Pro - Administration'
+        title: 'GAP APP - Administration'
       },
       {
         path: 'admin/register',
         component: RegisterComponent,
         canActivate: [roleGuard],
         data: { roles: ['admin'] },
-        title: 'PortSync Pro - Créer un collaborateur'
+        title: 'GAP APP - Créer un collaborateur'
       },
       {
         path: '',
