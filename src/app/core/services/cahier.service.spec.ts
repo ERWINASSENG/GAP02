@@ -71,12 +71,12 @@ describe('CahierService', () => {
     service = TestBed.inject(CahierService);
   });
 
-  it('should allow an operation date outside the current week range without blocking it', () => {
+  it('should allow a date inside the current week range', () => {
     const activeWeek = {
       id: 'week-1',
       site: 'Site A',
       start_date: '2026-07-14',
-      end_date: '2026-07-19',
+      end_date: '2026-07-20',
       is_closed: false,
       user_id: 'user-1',
       created_at: '2026-07-20T00:00:00.000Z'
@@ -85,8 +85,46 @@ describe('CahierService', () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     spyOn(service as any, 'getActiveWeek').and.returnValue(activeWeek);
 
-    const result = service.validateOperationDate('Site A', '2026-07-20');
+    const result = service.validateOperationDate('Site A', '2026-07-16');
 
     expect(result.allowed).toBeTrue();
+  });
+
+  it('should block a date before the current week range', () => {
+    const activeWeek = {
+      id: 'week-1',
+      site: 'Site A',
+      start_date: '2026-07-14',
+      end_date: '2026-07-20',
+      is_closed: false,
+      user_id: 'user-1',
+      created_at: '2026-07-20T00:00:00.000Z'
+    };
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    spyOn(service as any, 'getActiveWeek').and.returnValue(activeWeek);
+
+    const result = service.validateOperationDate('Site A', '2026-07-13');
+
+    expect(result.allowed).toBeFalse();
+  });
+
+  it('should block a date after the current week range', () => {
+    const activeWeek = {
+      id: 'week-1',
+      site: 'Site A',
+      start_date: '2026-07-14',
+      end_date: '2026-07-20',
+      is_closed: false,
+      user_id: 'user-1',
+      created_at: '2026-07-20T00:00:00.000Z'
+    };
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    spyOn(service as any, 'getActiveWeek').and.returnValue(activeWeek);
+
+    const result = service.validateOperationDate('Site A', '2026-07-21');
+
+    expect(result.allowed).toBeFalse();
   });
 });

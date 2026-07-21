@@ -744,25 +744,35 @@ export class CahierComponent implements OnInit {
     }
 
     const val = this.operationForm.getRawValue();
-    const validation = this.cahierService.validateOperationDate(val.site, val.date);
+
+    let rawItems = (val.items || []) as {
+      date?: string;
+      dnPrefix?: string;
+      dnNumber?: string;
+      dn?: string;
+      produit?: string;
+      qte?: number | null;
+      pu?: number | null;
+      montant?: number | null;
+    }[];
+
+    const dateCandidates = rawItems
+      .map(item => (item.date || '').toString().trim())
+      .filter(Boolean);
+
+    const operationDate = dateCandidates[0] || (val.date || '').toString().trim();
+    const validation = operationDate
+      ? this.cahierService.validateOperationDate(val.site, operationDate)
+      : { allowed: false, reason: 'Veuillez saisir une date d’opération.' };
+
     if (!validation.allowed) {
       this.validationBlockTitle.set('Saisie bloquée');
-      this.validationBlockMessage.set(null);
+      this.validationBlockMessage.set(validation.reason || 'La date saisie n’est pas autorisée pour la semaine active.');
       return;
     }
 
     this.isSaving.set(true);
     try {
-      let rawItems = (val.items || []) as {
-        date?: string;
-        dnPrefix?: string;
-        dnNumber?: string;
-        dn?: string;
-        produit?: string;
-        qte?: number | null;
-        pu?: number | null;
-        montant?: number | null;
-      }[];
 
       // Sort items if they are "Chargement" at "AFISA" or "SCMC"
       if ((val.site === 'AFISA' || val.site === 'SCMC') && val.type === 'Chargement') {
@@ -772,8 +782,6 @@ export class CahierComponent implements OnInit {
           return aNum.localeCompare(bNum, undefined, { numeric: true, sensitivity: 'base' });
         });
       }
-
-      const operationDate = rawItems.find(item => !!item.date)?.date || val.date || '';
 
       const opData: Omit<Operation, 'id' | 'collaborateur'> & { id?: string } = {
         id: this.activeDraftId() || undefined,
