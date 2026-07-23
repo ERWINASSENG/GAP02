@@ -110,8 +110,8 @@ export class CahierComponent implements OnInit {
   // Available options
   readonly sites = ['SCMC', 'TUSCANI', 'AFISA', 'AUTRE'];
   readonly operationTypes = OPERATION_TYPES;
-  readonly filteredOperationTypes = computed<string[]>(() => {
-    const site = this.formValue().site;
+
+  private getOperationTypesForSite(site: string): string[] {
     if (site === 'TUSCANI') {
       return ['Chargement Camions'];
     }
@@ -119,6 +119,40 @@ export class CahierComponent implements OnInit {
       return ['Chargement Wagon Blé', 'Chargement Wagon Farine', 'Reconditionnement', 'Nettoyage'];
     }
     return ['Chargement', 'Déchargement', 'Surmontage', 'Transfert', 'Son'];
+  }
+
+  private getUsedOperationTypesForSite(site: string): Set<string> {
+    const activeWeek = this.cahierService.getActiveWeek(site);
+    const relevantOperations = this.cahierService.operations().filter(op => {
+      if (!op?.site || op.site !== site || !op.type) {
+        return false;
+      }
+
+      if (op.isDraft) {
+        return true;
+      }
+
+      if (!activeWeek) {
+        return false;
+      }
+
+      const opDate = op.date;
+      return opDate >= activeWeek.start_date && opDate <= activeWeek.end_date;
+    });
+
+    return new Set(relevantOperations.map(op => op.type));
+  }
+
+  readonly filteredOperationTypes = computed<string[]>(() => {
+    const site = this.operationForm.controls.site.value || this.formValue().site || '';
+    if (!site) {
+      return this.getOperationTypesForSite('');
+    }
+
+    const availableTypes = this.getOperationTypesForSite(site);
+    const usedTypes = this.getUsedOperationTypesForSite(site);
+
+    return availableTypes.filter(type => !usedTypes.has(type));
   });
 
   readonly productPriceMap = new Map<string, number>([
@@ -664,6 +698,34 @@ export class CahierComponent implements OnInit {
     if (currentType && !allowedTypes.includes(currentType)) {
       this.operationForm.patchValue({ type: '' });
     }
+
+    const relevantOperations = this.cahierService.operations().filter(op => {
+      if (!op?.site || op.site !== siteOption || !op.type) {
+        return false;
+      }
+
+      const activeWeek = this.cahierService.getActiveWeek(siteOption);
+      if (op.isDraft) {
+        return true;
+      }
+
+      if (!activeWeek) {
+        return false;
+      }
+
+      return op.date >= activeWeek.start_date && op.date <= activeWeek.end_date;
+    });
+
+    if (relevantOperations.length > 0 && allowedTypes.length === 0) {
+      const existingOperation = relevantOperations[0];
+      if (existingOperation.isDraft) {
+        this.editDraft(existingOperation);
+      } else {
+        this.editOperation(existingOperation);
+      }
+      return;
+    }
+
     this.goToStep2();
   }
 

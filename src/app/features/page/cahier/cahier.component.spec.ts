@@ -44,12 +44,35 @@ describe('CahierComponent', () => {
   });
 
   it('should open and close the creation wizard modal', () => {
-    expect(component.isModalOpen()).toBeFalse();
+    expect(component.isCreationPageOpen()).toBeFalse();
     component.openNewOperationModal();
-    expect(component.isModalOpen()).toBeTrue();
+    expect(component.isCreationPageOpen()).toBeTrue();
     expect(component.currentStep()).toBe(1);
     component.closeModal();
-    expect(component.isModalOpen()).toBeFalse();
+    expect(component.isCreationPageOpen()).toBeFalse();
+  });
+
+  it('should reopen an existing draft for the selected site instead of creating a new operation', () => {
+    const draft = {
+      id: 'draft-1',
+      site: 'AFISA',
+      type: 'Chargement',
+      date: '2026-07-16',
+      heure: '08:00',
+      items: [],
+      isDraft: true,
+      user_id: 'user-1'
+    };
+
+    const cahierService = TestBed.inject(CahierService) as jasmine.SpyObj<CahierService>;
+    (cahierService as any).drafts = jasmine.createSpy('drafts').and.returnValue([draft]);
+
+    component.openNewOperationModal();
+    component.selectSite('AFISA');
+
+    expect(component.currentStep()).toBe(3);
+    expect(component.activeDraftId()).toBe('draft-1');
+    expect(component.operationForm.value.type).toBe('Chargement');
   });
 
   it('should allow submission when a filled row exists even without parent date and heure', () => {
