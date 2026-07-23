@@ -1,5 +1,5 @@
 import {Injectable, signal, computed, inject} from '@angular/core';
-import {PortUser, CreatedUser} from '../../shared/models/auth.model';
+import {PortUser, CreatedUser, UserProfileUpdate} from '../../shared/models/auth.model';
 import {SupabaseService} from './supabase.service';
 import {User} from '@supabase/supabase-js';
 
@@ -162,6 +162,46 @@ export class AuthService {
       return { success: true, users: data.users };
     } catch (err: unknown) {
       const errMsg = err instanceof Error ? err.message : "Erreur lors de la récupération des utilisateurs.";
+      return { success: false, error: errMsg };
+    }
+  }
+
+  /**
+   * Met à jour le profil d'un collaborateur via l'API administrateur sécurisée
+   */
+  async updateCreatedUser(userId: string, profile: UserProfileUpdate): Promise<{ success: boolean; user?: CreatedUser; error?: string }> {
+    try {
+      const session = await this.supabaseService.getSession();
+      const token = session?.access_token;
+
+      if (!token) {
+        return { success: false, error: 'Session non valide ou expirée.' };
+      }
+
+      const response = await fetch(`/api/admin/users/${encodeURIComponent(userId)}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          email: profile.email,
+          displayName: profile.displayName,
+          avatarUrl: profile.avatarUrl,
+          role: profile.role,
+          assignedSiteName: profile.assignedSiteName
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        return { success: false, error: data.error || 'Erreur lors de la mise à jour du profil.' };
+      }
+
+      return { success: true, user: data.user };
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : 'Erreur lors de la mise à jour du profil.';
       return { success: false, error: errMsg };
     }
   }
