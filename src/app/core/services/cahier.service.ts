@@ -56,17 +56,21 @@ export class CahierService {
         .order('start_date', { ascending: false });
 
       if (!error && data) {
-        const mappedWeeks: WorkWeek[] = data.map((w: Record<string, unknown>) => ({
-          id: w['id'] as string,
-          site: w['site'] as string,
-          start_date: w['start_date'] as string,
-          end_date: w['end_date'] as string,
-          is_closed: w['is_closed'] as boolean,
-          closed_at: w['closed_at'] as string,
-          created_at: w['created_at'] as string,
-          user_id: w['user_id'] as string
-        }));
+        const mappedWeeks: WorkWeek[] = data.map((w: Record<string, unknown>) => {
+          const startDate = w['start_date'] as string;
+          return {
+            id: w['id'] as string,
+            site: w['site'] as string,
+            start_date: startDate,
+            end_date: startDate ? this.computeWeekEndDate(startDate) : (w['end_date'] as string),
+            is_closed: w['is_closed'] as boolean,
+            closed_at: w['closed_at'] as string,
+            created_at: w['created_at'] as string,
+            user_id: w['user_id'] as string
+          };
+        });
         this._weeks.set(mappedWeeks);
+        void this.syncWeekEndDates(mappedWeeks);
       } else if (error) {
         console.error('❌ Erreur Supabase (Fetch semaines):', error.message);
       }
@@ -97,17 +101,21 @@ export class CahierService {
         .order('start_date', { ascending: false });
 
       if (!error && data) {
-        const mappedWeeks: WorkWeek[] = data.map((w: Record<string, unknown>) => ({
-          id: w['id'] as string,
-          site: w['site'] as string,
-          start_date: w['start_date'] as string,
-          end_date: w['end_date'] as string,
-          is_closed: w['is_closed'] as boolean,
-          closed_at: w['closed_at'] as string,
-          created_at: w['created_at'] as string,
-          user_id: w['user_id'] as string
-        }));
+        const mappedWeeks: WorkWeek[] = data.map((w: Record<string, unknown>) => {
+          const startDate = w['start_date'] as string;
+          return {
+            id: w['id'] as string,
+            site: w['site'] as string,
+            start_date: startDate,
+            end_date: startDate ? this.computeWeekEndDate(startDate) : (w['end_date'] as string),
+            is_closed: w['is_closed'] as boolean,
+            closed_at: w['closed_at'] as string,
+            created_at: w['created_at'] as string,
+            user_id: w['user_id'] as string
+          };
+        });
         this._adminWeeks.set(mappedWeeks);
+        void this.syncWeekEndDates(mappedWeeks);
       } else if (error) {
         console.error('❌ Erreur Supabase (Fetch semaines admin):', error.message);
       }
@@ -121,6 +129,49 @@ export class CahierService {
    */
   getActiveWeek(site: string): WorkWeek | undefined {
     return this._weeks().find(w => w.site === site && !w.is_closed);
+  }
+
+  private computeWeekEndDate(startDateStr: string): string {
+    const [year, month, day] = startDateStr.split('-').map(Number);
+    if ([year, month, day].some(Number.isNaN)) {
+      return startDateStr;
+    }
+
+    const endDate = new Date(Date.UTC(year, month - 1, day + 6));
+    return endDate.toISOString().split('T')[0];
+  }
+
+  private async syncWeekEndDates(weeks: WorkWeek[]): Promise<void> {
+    if (!this.isBrowser) return;
+
+    const updates = weeks.filter(week => {
+      if (!week.start_date) {
+        return false;
+      }
+
+      const computedEndDate = this.computeWeekEndDate(week.start_date);
+      return !!computedEndDate && week.end_date !== computedEndDate;
+    });
+
+    if (updates.length === 0) {
+      return;
+    }
+
+    await Promise.all(updates.map(async (week) => {
+      const computedEndDate = this.computeWeekEndDate(week.start_date);
+      try {
+        const { error } = await this.supabaseService.client
+          .from('cahier_weeks')
+          .update({ end_date: computedEndDate })
+          .eq('id', week.id);
+
+        if (error) {
+          console.error('❌ Erreur Supabase (sync semaine):', error.message);
+        }
+      } catch (err) {
+        console.error('❌ Erreur Réseau ou Supabase (sync semaine):', err);
+      }
+    }));
   }
 
   /**
@@ -142,11 +193,9 @@ export class CahierService {
     const user = this.authService.currentUser();
     const id = crypto.randomUUID();
 
-    // Calculate end_date = startDate + 5 days
-    const startDate = new Date(startDateStr);
-    const endDate = new Date(startDate);
-    endDate.setDate(startDate.getDate() + 5);
-    const endDateStr = endDate.toISOString().split('T')[0];
+    // Une semaine de travail couvre 6 jours supplémentaires après le début.
+    // Ex. 2026-07-20 -> 2026-07-26
+    const endDateStr = this.computeWeekEndDate(startDateStr);
 
     const newWeek: WorkWeek = {
       id,
@@ -225,9 +274,7 @@ export class CahierService {
    * des opérations déjà rattachées à cette semaine (elle ne rétrécit jamais).
    */
   private async shiftWeekStart(week: WorkWeek, newStartDate: string): Promise<WorkWeek> {
-    const computedEnd = new Date(newStartDate);
-    computedEnd.setDate(computedEnd.getDate() + 5);
-    const computedEndStr = computedEnd.toISOString().split('T')[0];
+    const computedEndStr = this.computeWeekEndDate(newStartDate);
     const newEndDate = computedEndStr > week.end_date ? computedEndStr : week.end_date;
 
     const previousWeeks = this._weeks();
