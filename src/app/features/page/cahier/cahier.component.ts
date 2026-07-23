@@ -51,10 +51,20 @@ export class CahierComponent implements OnInit {
   // Date de début choisie par l'utilisateur pour démarrer une nouvelle semaine, par site
   readonly newWeekStartDates = signal<Record<string, string>>({});
 
+  readonly visibleSites = computed<string[]>(() => {
+    const user = this.authService.currentUser();
+    if (user?.role === 'admin') {
+      return ['SCMC', 'TUSCANI', 'AFISA', 'AUTRE'];
+    }
+
+    const assignedSite = user?.assignedSiteName?.trim();
+    return assignedSite ? [assignedSite] : [];
+  });
+
   readonly activeWeeksBySite = computed(() => {
     const weeks = this.cahierService.weeks();
     const result: Record<string, WorkWeek> = {};
-    this.sites.forEach(site => {
+    this.visibleSites().forEach(site => {
       const active = weeks.find(w => w.site === site && !w.is_closed);
       if (active) {
         result[site] = active;
@@ -69,13 +79,44 @@ export class CahierComponent implements OnInit {
     return this.cahierService.validateOperationDate(val.site, val.date);
   });
 
+  readonly visibleOperations = computed<Operation[]>(() => {
+    const isAdmin = this.authService.currentUser()?.role === 'admin';
+    const visibleSites = this.visibleSites();
+
+    return this.cahierService.operations().filter(op => {
+      if (!op) return false;
+      if (!isAdmin && visibleSites.length > 0 && !visibleSites.includes(op.site || '')) return false;
+      return true;
+    });
+  });
+
+  readonly visibleDrafts = computed(() => {
+    const isAdmin = this.authService.currentUser()?.role === 'admin';
+    const visibleSites = this.visibleSites();
+
+    return this.cahierService.drafts().filter(draft => {
+      if (!draft) return false;
+      if (!isAdmin && visibleSites.length > 0 && !visibleSites.includes(draft.site || '')) return false;
+      return true;
+    });
+  });
+
+  readonly visibleMonthlySummaries = computed(() => {
+    const isAdmin = this.authService.currentUser()?.role === 'admin';
+    const visibleSites = this.visibleSites();
+
+    return this.cahierService.monthlySummaries().filter(summary => {
+      if (!isAdmin && visibleSites.length > 0 && !visibleSites.includes(summary.site || '')) return false;
+      return true;
+    });
+  });
+
   readonly selectedSummary = computed<MonthlySummary | null>(() => {
     const keys = this.selectedSummaryKeys();
     if (!keys) return null;
 
-    const allOps = this.cahierService.operations();
-    const filteredOps = allOps.filter(o => {
-      if (!o || o.isDraft) return false;
+    const filteredOps = this.visibleOperations().filter(o => {
+      if (o.isDraft) return false;
       if (!o.date || typeof o.date !== 'string') return false;
       const dateParts = o.date.split('-');
       if (dateParts.length < 2) return false;
@@ -108,7 +149,6 @@ export class CahierComponent implements OnInit {
   readonly isEditingRegistered = signal<boolean>(false);
 
   // Available options
-  readonly sites = ['SCMC', 'TUSCANI', 'AFISA', 'AUTRE'];
   readonly operationTypes = OPERATION_TYPES;
 
   private getOperationTypesForSite(site: string): string[] {
@@ -145,8 +185,12 @@ export class CahierComponent implements OnInit {
 
   readonly filteredOperationTypes = computed<string[]>(() => {
     const site = this.operationForm.controls.site.value || this.formValue().site || '';
+    const visibleSites = this.visibleSites();
     if (!site) {
       return this.getOperationTypesForSite('');
+    }
+    if (visibleSites.length > 0 && !visibleSites.includes(site)) {
+      return [];
     }
 
     const availableTypes = this.getOperationTypesForSite(site);
@@ -501,8 +545,15 @@ export class CahierComponent implements OnInit {
     this.isEditingRegistered.set(false);
     this.itemsFormArray.clear();
     this.activeDraftId.set(null);
+
+    const currentUser = this.authService.currentUser();
+    const visibleSites = this.visibleSites();
+    const defaultSite = currentUser?.role === 'admin'
+      ? ''
+      : (visibleSites[0] || '');
+
     this.operationForm.reset({
-      site: '',
+      site: defaultSite,
       type: '',
       date: '',
       heure: '',
@@ -692,6 +743,11 @@ export class CahierComponent implements OnInit {
 
   // Auto-selection triggers transition
   selectSite(siteOption: string) {
+    const visibleSites = this.visibleSites();
+    if (visibleSites.length > 0 && !visibleSites.includes(siteOption)) {
+      return;
+    }
+
     this.operationForm.patchValue({ site: siteOption });
     const currentType = this.operationForm.controls.type.value;
     const allowedTypes = this.filteredOperationTypes();
