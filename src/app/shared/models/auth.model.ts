@@ -48,3 +48,11 @@ export interface CreatedUser {
   };
   created_at?: string;
 }
+
+export interface UserProfileUpdate {
+  email: string;
+  displayName: string;
+  avatarUrl: string;
+  role: PortRole;
+  assignedSiteName: string;
+}

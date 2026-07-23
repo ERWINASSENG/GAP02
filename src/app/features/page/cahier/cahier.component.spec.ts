@@ -43,6 +43,10 @@ describe('CahierComponent', () => {
     expect(component).toBeTruthy();
   });
 
+  it('should expose only the assigned site for regular users', () => {
+    expect(component.visibleSites()).toEqual(['SCMC']);
+  });
+
   it('should open and close the creation wizard modal', () => {
     expect(component.isCreationPageOpen()).toBeFalse();
     component.openNewOperationModal();

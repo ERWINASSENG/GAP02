@@ -7,7 +7,7 @@ import { ExcelExportService } from '../../../core/services/excel-export.service'
 import { DocxExportService } from '../../../core/services/docx-export.service';
 import { MonthlySummary, Operation, OperationItem, OPERATION_TYPES, WorkWeek } from '../../../shared/models/cahier.model';
 import { AuthService } from '../../../core/services/auth.service';
-import { CreatedUser } from '../../../shared/models/auth.model';
+import { CreatedUser, PortRole, UserProfileUpdate } from '../../../shared/models/auth.model';
 
 interface TypeSiteGroup {
   key: string;
@@ -41,6 +41,18 @@ export class AdminCahierViewComponent implements OnInit {
   readonly createdUsers = signal<CreatedUser[]>([]);
   readonly isLoadingUsers = signal<boolean>(false);
   readonly errorUsers = signal<string>('');
+  readonly selectedUser = signal<CreatedUser | null>(null);
+  readonly isSavingUser = signal<boolean>(false);
+  readonly userEditError = signal<string>('');
+  readonly userEditSuccess = signal<string>('');
+
+  readonly userEditForm = new FormGroup({
+    displayName: new FormControl<string>('', { nonNullable: true, validators: [Validators.required] }),
+    email: new FormControl<string>('', { nonNullable: true, validators: [Validators.required, Validators.email] }),
+    avatarUrl: new FormControl<string>('', { nonNullable: true }),
+    role: new FormControl<PortRole>('user', { nonNullable: true, validators: [Validators.required] }),
+    assignedSiteName: new FormControl<string>('', { nonNullable: true })
+  });
 
   // Regroupement par type d'opération + site, pour l'export ciblé
   readonly groupedByTypeSite = computed<TypeSiteGroup[]>(() => {
@@ -98,6 +110,66 @@ export class AdminCahierViewComponent implements OnInit {
     } else {
       this.errorUsers.set(res.error || 'Erreur lors du chargement des collaborateurs.');
     }
+  }
+
+  openUserProfile(user: CreatedUser): void {
+    this.selectedUser.set(user);
+    this.userEditError.set('');
+    this.userEditSuccess.set('');
+    this.userEditForm.reset({
+      displayName: user.user_metadata?.display_name || '',
+      email: user.email || '',
+      avatarUrl: user.user_metadata?.avatar_url || '',
+      role: this.toPortRole(user.app_metadata?.role),
+      assignedSiteName: user.app_metadata?.assignedSiteName || ''
+    });
+  }
+
+  closeUserProfile(): void {
+    if (!this.isSavingUser()) {
+      this.selectedUser.set(null);
+      this.userEditForm.reset();
+      this.userEditError.set('');
+      this.userEditSuccess.set('');
+    }
+  }
+
+  async saveUserProfile(): Promise<void> {
+    const user = this.selectedUser();
+    if (!user || this.userEditForm.invalid) {
+      this.userEditForm.markAllAsTouched();
+      return;
+    }
+
+    this.isSavingUser.set(true);
+    this.userEditError.set('');
+    this.userEditSuccess.set('');
+
+    const formValue = this.userEditForm.getRawValue();
+    const profile: UserProfileUpdate = {
+      displayName: formValue.displayName.trim(),
+      email: formValue.email.trim(),
+      avatarUrl: formValue.avatarUrl.trim(),
+      role: formValue.role,
+      assignedSiteName: formValue.assignedSiteName.trim()
+    };
+    const result = await this.authService.updateCreatedUser(user.id, profile);
+
+    this.isSavingUser.set(false);
+    if (!result.success || !result.user) {
+      this.userEditError.set(result.error || 'La mise à jour du profil a échoué.');
+      return;
+    }
+
+    this.createdUsers.update(users => users.map(existingUser =>
+      existingUser.id === result.user?.id ? result.user : existingUser
+    ));
+    this.selectedUser.set(result.user);
+    this.userEditSuccess.set('Profil enregistré avec succès.');
+  }
+
+  private toPortRole(role: string | undefined): PortRole {
+    return role === 'admin' || role === 'manager' || role === 'user' ? role : 'user';
   }
 
   exportToPdf(summary: MonthlySummary) {

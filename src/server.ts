@@ -140,6 +140,106 @@ app.get('/api/admin/users', async (req, res) => {
   }
 });
 
+// API: Modifier le profil d'un utilisateur (rôle administrateur requis)
+app.patch('/api/admin/users/:id', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      res.status(401).json({ error: 'Non autorisé' });
+      return;
+    }
+
+    let supabaseUrl = process.env['SUPABASE_URL'];
+    if (!supabaseUrl || !supabaseUrl.startsWith('http')) {
+      supabaseUrl = 'https://jwpigzkxkbszxzngfepn.supabase.co';
+    }
+    const supabaseServiceRole = process.env['SUPABASE_SERVICE_ROLE_KEY'];
+
+    if (!supabaseServiceRole) {
+      res.status(500).json({ error: 'La configuration du serveur est incomplète (SUPABASE_SERVICE_ROLE_KEY manquant).' });
+      return;
+    }
+
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRole, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    });
+
+    const token = authHeader.replace('Bearer ', '');
+    const { data: authData, error: authError } = await supabaseAdmin.auth.getUser(token);
+    const adminUser = authData?.user;
+
+    if (authError || !adminUser || adminUser.app_metadata?.['role'] !== 'admin') {
+      res.status(403).json({ error: 'Privilèges administrateur requis.' });
+      return;
+    }
+
+    const userId = req.params['id'];
+    if (!userId || userId === adminUser.id) {
+      res.status(400).json({ error: 'Utilisateur cible invalide.' });
+      return;
+    }
+
+    const { email, displayName, avatarUrl, role, assignedSiteName } = req.body ?? {};
+
+    if (typeof email !== 'string' || !email.trim() || !email.includes('@')) {
+      res.status(400).json({ error: 'Une adresse e-mail valide est requise.' });
+      return;
+    }
+    if (typeof displayName !== 'string' || !displayName.trim()) {
+      res.status(400).json({ error: 'Le nom complet est requis.' });
+      return;
+    }
+    if (role !== 'admin' && role !== 'manager' && role !== 'user') {
+      res.status(400).json({ error: 'Le rôle sélectionné est invalide.' });
+      return;
+    }
+    if (typeof avatarUrl !== 'string' || typeof assignedSiteName !== 'string') {
+      res.status(400).json({ error: 'Les informations du profil sont invalides.' });
+      return;
+    }
+
+    const { data: existingUserData, error: existingUserError } = await supabaseAdmin.auth.admin.getUserById(userId);
+    if (existingUserError || !existingUserData.user) {
+      res.status(404).json({ error: 'Utilisateur introuvable.' });
+      return;
+    }
+
+    const existingAppMetadata = existingUserData.user.app_metadata || {};
+    if (existingAppMetadata['created_by'] !== adminUser.id) {
+      res.status(403).json({ error: 'Vous ne pouvez modifier que les collaborateurs que vous avez créés.' });
+      return;
+    }
+
+    const { data: updateData, error: updateError } = await supabaseAdmin.auth.admin.updateUserById(userId, {
+      email: email.trim(),
+      user_metadata: {
+        ...(existingUserData.user.user_metadata || {}),
+        display_name: displayName.trim(),
+        avatar_url: avatarUrl.trim()
+      },
+      app_metadata: {
+        ...existingAppMetadata,
+        role,
+        assignedSiteName: assignedSiteName.trim()
+      }
+    });
+
+    if (updateError || !updateData.user) {
+      res.status(400).json({ error: updateError?.message || 'La mise à jour du profil a échoué.' });
+      return;
+    }
+
+    res.json({ success: true, user: updateData.user });
+  } catch (err: unknown) {
+    const errMsg = err instanceof Error ? err.message : 'Internal Server Error';
+    console.error('Error in PATCH /api/admin/users/:id:', errMsg);
+    res.status(500).json({ error: errMsg });
+  }
+});
+
 // API: Récupérer toutes les opérations (rôle administrateur requis)
 app.get('/api/admin/operations', async (req, res) => {
   try {
