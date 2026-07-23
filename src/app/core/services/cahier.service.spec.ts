@@ -71,6 +71,48 @@ describe('CahierService', () => {
     service = TestBed.inject(CahierService);
   });
 
+  it('should compute a 6-day inclusive week end date', () => {
+    expect((service as any).computeWeekEndDate('2026-07-20')).toBe('2026-07-26');
+  });
+
+  it('should sync a persisted week end date to the 6-day rule', async () => {
+    const supabaseService = TestBed.inject(SupabaseService) as any;
+    const updateSpy = jasmine.createSpy('update').and.returnValue({
+      eq: jasmine.createSpy('eq').and.returnValue(Promise.resolve({ error: null }))
+    });
+
+    supabaseService.client.from = jasmine.createSpy('from').and.callFake((table: string) => {
+      if (table === 'cahier_weeks') {
+        return {
+          select: jasmine.createSpy('select').and.returnValue({
+            eq: jasmine.createSpy('eq').and.returnValue({
+              order: jasmine.createSpy('order').and.returnValue(Promise.resolve({
+                data: [{
+                  id: 'week-1',
+                  site: 'Site A',
+                  start_date: '2026-07-20',
+                  end_date: '2026-07-25',
+                  is_closed: false,
+                  closed_at: null,
+                  created_at: '2026-07-20T00:00:00.000Z',
+                  user_id: 'user-1'
+                }],
+                error: null
+              }))
+            })
+          }),
+          update: updateSpy
+        };
+      }
+
+      return {};
+    });
+
+    await (service as any).loadInitialWeeks('user-1');
+
+    expect(updateSpy).toHaveBeenCalled();
+  });
+
   it('should allow a date inside the current week range', () => {
     const activeWeek = {
       id: 'week-1',
