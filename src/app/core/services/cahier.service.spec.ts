@@ -169,4 +169,62 @@ describe('CahierService', () => {
 
     expect(result.allowed).toBeFalse();
   });
+
+  it('should persist each item date when saving an operation', async () => {
+    const activeWeek = {
+      id: 'week-1',
+      site: 'Site A',
+      start_date: '2026-07-20',
+      end_date: '2026-07-26',
+      is_closed: false,
+      user_id: 'user-1',
+      created_at: '2026-07-20T00:00:00.000Z'
+    };
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    spyOn(service as any, 'getActiveWeek').and.returnValue(activeWeek);
+
+    const insertedItems: Array<Record<string, unknown>> = [];
+    const supabaseService = TestBed.inject(SupabaseService) as any;
+    supabaseService.client.from = jasmine.createSpy('from').and.callFake((table: string) => {
+      if (table === 'operations') {
+        return {
+          upsert: jasmine.createSpy('upsert').and.returnValue({
+            select: () => ({
+              single: jasmine.createSpy('single').and.returnValue(Promise.resolve({ data: { id: 'op-1' }, error: null }))
+            })
+          })
+        };
+      }
+
+      if (table === 'operation_items') {
+        return {
+          delete: jasmine.createSpy('delete').and.returnValue({
+            eq: jasmine.createSpy('eq').and.returnValue(Promise.resolve({ error: null }))
+          }),
+          insert: jasmine.createSpy('insert').and.callFake((rows: Array<Record<string, unknown>>) => {
+            insertedItems.push(...rows);
+            return Promise.resolve({ error: null });
+          })
+        };
+      }
+
+      return {};
+    });
+
+    await service.addOperation({
+      site: 'Site A',
+      type: 'Chargement',
+      date: '2026-07-20',
+      heure: '08:00',
+      items: [
+        { date: '2026-07-20', dn: 'DN 1', produit: 'Produit A', qte: 10, pu: 100, montant: 1000 },
+        { date: '2026-07-21', dn: 'DN 2', produit: 'Produit B', qte: 5, pu: 100, montant: 500 }
+      ]
+    } as any);
+
+    expect(insertedItems).toHaveSize(2);
+    expect(insertedItems[0]).toEqual(jasmine.objectContaining({ date: '2026-07-20' }));
+    expect(insertedItems[1]).toEqual(jasmine.objectContaining({ date: '2026-07-21' }));
+  });
 });
