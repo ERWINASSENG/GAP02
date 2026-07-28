@@ -9,50 +9,53 @@
     <!-- Section principale : Synthèses mensuelles et opérations -->
     <div class="lg:col-span-3 space-y-6">
 
-      <!-- Tableaux par type d'opération / site : édition, suppression, export ciblé -->
+      <!-- Tableaux par type d'opération : rendu identique à la vue Liste des mouvements -->
       <div class="overflow-hidden">
         <div class="px-0 py-4 border-b border-slate-200/70 dark:border-slate-700/70">
-          <h2 class="font-semibold">Tableaux par type d'opération &amp; site</h2>
-          <p class="text-xs text-slate-500 dark:text-slate-400">Sélectionnez un ou plusieurs tableaux pour les exporter ensemble, ou modifiez/supprimez une opération directement.</p>
+          <h2 class="font-semibold">Tableaux par type d'opération</h2>
+          <p class="text-xs text-slate-500 dark:text-slate-400">Rendu identique à la liste des mouvements, avec les mêmes colonnes et la même structure de tableau.</p>
         </div>
 
-        <div class="divide-y divide-slate-200/70 dark:divide-slate-700/70">
-          @for (group of groupedByTypeSite(); track group.key) {
-            <div class="py-4 space-y-3">
-              <div class="flex items-center justify-between gap-3 flex-wrap">
-                <label class="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    class="w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-indigo-600 focus:ring-indigo-500"
-                    [checked]="isGroupSelected(group.key)"
-                    (change)="toggleGroupSelection(group.key)">
-                  <span class="font-semibold">{{ getGroupTitle(group) }}</span>
-                  <span class="px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold">
-                    {{ group.count }} opérations
-                  </span>
-                </label>
+        <div class="space-y-6 pb-4">
+          @for (group of detailedTypeGroups(); track group.type + group.product) {
+            @let isWagon = group.type.toLowerCase().includes('wagon');
+            @let isBleWagon = group.type === 'Chargement Wagon Blé' || (isWagon && group.product === 'Blé');
+            @let isFarineWagon = group.type === 'Chargement Wagon Farine' || (isWagon && group.product.toLowerCase().includes('farine'));
+            @let showDn = group.type === 'Chargement' && (group.product === 'AFISA' || group.product === 'SCMC');
+
+            <div class="w-full">
+              <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2 mb-3">
+                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-xs font-bold text-indigo-700 dark:text-indigo-400 shadow-2xs">
+                  {{ getAdminTypeGroupTitle(group) }}@if (getAdminTypeGroupSubtitle(group)) { {{ ' ' + getAdminTypeGroupSubtitle(group) }} }
+                </span>
                 <div class="flex items-center gap-2">
                   <button
-                    (click)="exportGroupToExcel(group)"
+                    (click)="exportGroupToExcel({ key: group.type + '|' + group.product, type: group.type, site: '', label: getAdminTypeGroupTitle(group), ops: group.ops, count: group.ops.length })"
                     class="px-3 py-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors">
                     Excel
                   </button>
                   <button
-                    (click)="exportGroupToDocx(group)"
+                    (click)="exportGroupToDocx({ key: group.type + '|' + group.product, type: group.type, site: '', label: getAdminTypeGroupTitle(group), ops: group.ops, count: group.ops.length })"
                     class="px-3 py-1.5 text-xs font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors">
                     Word
                   </button>
                 </div>
               </div>
 
-              <div class="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700 bg-transparent">
+              <div class="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm">
                 <table class="w-full text-center border-collapse text-xs sm:text-sm block md:table overflow-x-auto whitespace-nowrap md:whitespace-normal">
                   <thead>
                     <tr class="bg-slate-50/70 dark:bg-slate-800/70 text-slate-600 dark:text-slate-300 text-[11px] font-bold uppercase tracking-wider border-b border-slate-200 dark:border-slate-700">
                       <th class="px-3 py-3 border border-slate-200 dark:border-slate-700 text-center">Date</th>
-                      <th class="px-3 py-3 border border-slate-200 dark:border-slate-700 text-center">{{ getIdentifierLabel(group.ops[0]) }}</th>
-                      <th class="px-3 py-3 border border-slate-200 dark:border-slate-700 text-center">Produit</th>
-                      <th class="px-3 py-3 border border-slate-200 dark:border-slate-700 text-center">Qte</th>
+                      @if (group.type !== 'Chargement Camions' && !isWagon && showDn) {
+                        <th class="px-3 py-3 border border-slate-200 dark:border-slate-700 text-center">DN / LTI / ISTI</th>
+                      }
+                      @if (group.type !== 'Chargement Camions' && !isWagon) {
+                        <th class="px-3 py-3 border border-slate-200 dark:border-slate-700 text-center">{{ group.type === 'Reconditionnement' ? 'Désignation' : 'Produit' }}</th>
+                      }
+                      <th class="px-3 py-3 border border-slate-200 dark:border-slate-700 text-center">
+                        {{ group.type === 'Chargement Camions' || isBleWagon ? 'Tonnage' : (isFarineWagon ? 'Nbr sacs' : 'Qte') }}
+                      </th>
                       <th class="px-3 py-3 border border-slate-200 dark:border-slate-700 text-center">PU (FCFA)</th>
                       <th class="px-3 py-3 border border-slate-200 dark:border-slate-700 text-center">Montant (FCFA)</th>
                       <th class="px-3 py-3 border border-slate-200 dark:border-slate-700 text-center">Actions</th>
@@ -67,12 +70,16 @@
                               {{ item.date || op.date }}
                             </td>
                           }
-                          <td class="px-3 py-3 border border-slate-200 dark:border-slate-700 text-center font-mono">
-                            {{ item.dn || '—' }}
-                          </td>
-                          <td class="px-3 py-3 border border-slate-200 dark:border-slate-700 text-center">
-                            {{ item.produit || '—' }}
-                          </td>
+                          @if (showDn || group.type === 'Chargement Camions' || isWagon) {
+                            <td class="px-3 py-3 border border-slate-200 dark:border-slate-700 text-center font-mono">
+                              {{ item.dn || '—' }}
+                            </td>
+                          }
+                          @if (group.type !== 'Chargement Camions' && !isWagon) {
+                            <td class="px-3 py-3 border border-slate-200 dark:border-slate-700 text-center">
+                              {{ item.produit || '—' }}
+                            </td>
+                          }
                           <td class="px-3 py-3 border border-slate-200 dark:border-slate-700 text-center font-mono">
                             {{ item.qte | number }}
                           </td>
@@ -101,23 +108,19 @@
                         </tr>
                       } @empty {
                         <tr>
-                          <td colspan="7" class="px-3 py-6 text-center text-slate-400 text-xs">Aucun item</td>
+                          <td colspan="6" class="px-3 py-6 text-center text-slate-400 text-xs">Aucun item</td>
                         </tr>
                       }
                     }
                     <tr class="bg-slate-50/70 dark:bg-slate-800/70 font-semibold">
                       <td colspan="5" class="px-3 py-3 border border-slate-200 dark:border-slate-700 text-right">TOTAL</td>
-                      <td colspan="2" class="px-3 py-3 border border-slate-200 dark:border-slate-700 text-center font-mono text-indigo-700 dark:text-indigo-400">
-                        {{ getGroupTotal(group) | number }}
+                      <td class="px-3 py-3 border border-slate-200 dark:border-slate-700 text-center font-mono text-indigo-700 dark:text-indigo-400">
+                        {{ getGroupTotal({ key: group.type + '|' + group.product, type: group.type, site: '', label: getAdminTypeGroupTitle(group), ops: group.ops, count: group.ops.length }) | number }}
                       </td>
                     </tr>
                   </tbody>
                 </table>
               </div>
-            </div>
-          } @empty {
-            <div class="py-12 text-center text-slate-400 text-sm">
-              Aucune opération enregistrée pour le moment.
             </div>
           }
         </div>
