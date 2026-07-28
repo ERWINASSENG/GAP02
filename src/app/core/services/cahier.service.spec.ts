@@ -1,3 +1,5 @@
+/// <reference types="jasmine" />
+
 import { TestBed } from '@angular/core/testing';
 import { CahierService } from './cahier.service';
 import { SupabaseService } from './supabase.service';
