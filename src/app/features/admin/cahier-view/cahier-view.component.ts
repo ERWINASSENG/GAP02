@@ -18,6 +18,12 @@ interface TypeSiteGroup {
   count: number;
 }
 
+interface DetailedTypeGroup {
+  type: string;
+  product: string;
+  ops: Operation[];
+}
+
 @Component({
   selector: 'app-admin-cahier-view',
   imports: [CommonModule, ReactiveFormsModule],
@@ -75,6 +81,40 @@ export class AdminCahierViewComponent implements OnInit {
 
   readonly selectedGroupKeys = signal<Set<string>>(new Set());
   readonly hasSelection = computed(() => this.selectedGroupKeys().size > 0);
+
+  readonly detailedTypeGroups = computed<DetailedTypeGroup[]>(() => {
+    const ops = this.cahierService.adminOperations().filter(op => !op.isDraft);
+    const getOpTime = (op: Operation) => {
+      const date = op.date || '';
+      const heure = op.heure || '00:00';
+      return `${date}T${heure}`;
+    };
+
+    const groups: Record<string, Operation[]> = {};
+    ops.forEach(op => {
+      const type = op.type;
+      const product = op.produit || '';
+      const key = product ? `${type}|${product}` : type;
+      if (!groups[key]) {
+        groups[key] = [];
+      }
+      groups[key].push(op);
+    });
+
+    const sortedKeys = Object.keys(groups).sort((keyA, keyB) => {
+      const opsA = groups[keyA];
+      const opsB = groups[keyB];
+      const earliestA = opsA.reduce((earliest, curr) => getOpTime(curr) < getOpTime(earliest) ? curr : earliest, opsA[0]);
+      const earliestB = opsB.reduce((earliest, curr) => getOpTime(curr) < getOpTime(earliest) ? curr : earliest, opsB[0]);
+      return getOpTime(earliestA).localeCompare(getOpTime(earliestB));
+    });
+
+    return sortedKeys.map(key => {
+      const sortedOps = groups[key].sort((a, b) => getOpTime(b).localeCompare(getOpTime(a)));
+      const [type, product] = key.includes('|') ? key.split('|') : [key, ''];
+      return { type, product, ops: sortedOps };
+    });
+  });
 
   // --- Édition d'une opération ---
   readonly editingOperation = signal<Operation | null>(null);
@@ -221,6 +261,15 @@ export class AdminCahierViewComponent implements OnInit {
     }
 
     return group.label.toUpperCase();
+  }
+
+  getAdminTypeGroupTitle(group: DetailedTypeGroup): string {
+    const type = (group.type || '').trim().toUpperCase();
+    return type;
+  }
+
+  getAdminTypeGroupSubtitle(group: DetailedTypeGroup): string {
+    return group.product ? group.product.toUpperCase() : '';
   }
 
   // --- Sélection de groupes type/site pour export ciblé ---

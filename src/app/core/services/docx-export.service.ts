@@ -335,9 +335,9 @@ export class DocxExportService {
       // Aplatir et trier les éléments chronologiquement pour le tableau
       const itemsWithMeta: MonthlyItemWithMeta[] = group.ops.flatMap(op => 
         (op.items || []).map(item => ({
-          originalDate: item.date,
+          originalDate: item.date || op.date,
           originalTime: op.heure || '00:00',
-          dateStr: this.formatFrenchDate(item.date),
+          dateStr: this.formatFrenchDate(item.date || op.date),
           dn: item.dn || '-',
           produit: item.produit || op.produit || '-',
           qte: item.qte || 0,

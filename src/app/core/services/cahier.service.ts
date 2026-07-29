@@ -1,6 +1,6 @@
 import { Injectable, inject, signal, computed, effect, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
-import { Operation, MonthlySummary, WorkWeek } from '../../shared/models/cahier.model';
+import { Operation, OperationItem, MonthlySummary, WorkWeek } from '../../shared/models/cahier.model';
 import { SupabaseService } from './supabase.service';
 import { AuthService } from './auth.service';
 
@@ -554,6 +554,27 @@ export class CahierService {
     return this._operations().filter(op => op.isDraft);
   });
 
+  private buildOperationItemRows(operationId: string, items: OperationItem[] | undefined, parentDate: string): Record<string, unknown>[] {
+    return (items || []).map(item => {
+      const row: Record<string, unknown> = {
+        id: item.id || crypto.randomUUID(),
+        operation_id: operationId,
+        dn: item.dn || '',
+        produit: item.produit || '',
+        quantite: Number(item.qte) || 0,
+        pu: Number(item.pu) || 0,
+        montant: Number(item.montant) || 0
+      };
+
+      const safeDate = item.date || parentDate || '';
+      if (safeDate) {
+        row['date'] = safeDate;
+      }
+
+      return row;
+    });
+  }
+
   /**
    * Adds or finalizes an operation
    */
@@ -635,15 +656,7 @@ export class CahierService {
       }
 
       if (finalizedOp.items && finalizedOp.items.length > 0) {
-        const dbItems = finalizedOp.items.map(item => ({
-          id: item.id || crypto.randomUUID(),
-          operation_id: finalizedOp.id,
-          dn: item.dn || '',
-          produit: item.produit || '',
-          quantite: Number(item.qte) || 0,
-          pu: Number(item.pu) || 0,
-          montant: Number(item.montant) || 0
-        }));
+        const dbItems = this.buildOperationItemRows(finalizedOp.id, finalizedOp.items, finalizedOp.date);
         const { error: insertItemsError } = await this.supabaseService.client
           .from('operation_items')
           .insert(dbItems);
@@ -753,15 +766,7 @@ export class CahierService {
       }
 
       if (draftOp.items && draftOp.items.length > 0) {
-        const dbItems = draftOp.items.map(item => ({
-          id: item.id || crypto.randomUUID(),
-          operation_id: draftOp.id,
-          dn: item.dn || '',
-          produit: item.produit || '',
-          quantite: Number(item.qte) || 0,
-          pu: Number(item.pu) || 0,
-          montant: Number(item.montant) || 0
-        }));
+        const dbItems = this.buildOperationItemRows(draftOp.id, draftOp.items, draftOp.date);
         const { error: insertItemsError } = await this.supabaseService.client
           .from('operation_items')
           .insert(dbItems);
@@ -862,15 +867,7 @@ export class CahierService {
       }
 
       if (op.items && op.items.length > 0) {
-        const dbItems = op.items.map(item => ({
-          id: item.id || crypto.randomUUID(),
-          operation_id: op.id,
-          dn: item.dn || '',
-          produit: item.produit || '',
-          quantite: Number(item.qte) || 0,
-          pu: Number(item.pu) || 0,
-          montant: Number(item.montant) || 0
-        }));
+        const dbItems = this.buildOperationItemRows(op.id, op.items, op.date);
         const { error: insertItemsError } = await this.supabaseService.client
           .from('operation_items')
           .insert(dbItems);
