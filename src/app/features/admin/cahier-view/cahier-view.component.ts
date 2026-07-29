@@ -18,11 +18,13 @@ interface TypeSiteGroup {
   count: number;
 }
 
+/*
 interface DetailedTypeGroup {
   type: string;
   product: string;
   ops: Operation[];
 }
+*/
 
 @Component({
   selector: 'app-admin-cahier-view',
@@ -82,6 +84,7 @@ export class AdminCahierViewComponent implements OnInit {
   readonly selectedGroupKeys = signal<Set<string>>(new Set());
   readonly hasSelection = computed(() => this.selectedGroupKeys().size > 0);
 
+  /*
   readonly detailedTypeGroups = computed<DetailedTypeGroup[]>(() => {
     const ops = this.cahierService.adminOperations().filter(op => !op.isDraft);
     const getOpTime = (op: Operation) => {
@@ -115,6 +118,7 @@ export class AdminCahierViewComponent implements OnInit {
       return { type, product, ops: sortedOps };
     });
   });
+  */
 
   // --- Édition d'une opération ---
   readonly editingOperation = signal<Operation | null>(null);
@@ -263,6 +267,7 @@ export class AdminCahierViewComponent implements OnInit {
     return group.label.toUpperCase();
   }
 
+  /*
   getAdminTypeGroupTitle(group: DetailedTypeGroup): string {
     const type = (group.type || '').trim().toUpperCase();
     return type;
@@ -271,6 +276,7 @@ export class AdminCahierViewComponent implements OnInit {
   getAdminTypeGroupSubtitle(group: DetailedTypeGroup): string {
     return group.product ? group.product.toUpperCase() : '';
   }
+  */
 
   // --- Sélection de groupes type/site pour export ciblé ---
 
