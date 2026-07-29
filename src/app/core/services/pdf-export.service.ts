@@ -378,25 +378,13 @@ export class PdfExportService {
 
     // Table
     const headers = [['Date', 'Collaborateur', 'Type', 'Détails', 'Items']];
-    const data = summary.operations.flatMap((op: Operation) => {
-      if ((op.items || []).length > 0) {
-        return (op.items || []).map((i: OperationItem) => [
-          `${i.date || op.date} ${op.heure}`,
-          op.collaborateur || '-',
-          op.type,
-          op.details || '-',
-          `${i.produit}: ${i.qte}`
-        ]);
-      }
-
-      return [[
-        `${op.date} ${op.heure}`,
-        op.collaborateur || '-',
-        op.type,
-        op.details || '-',
-        '-'
-      ]];
-    });
+    const data = summary.operations.map((op: Operation) => [
+      `${op.date} ${op.heure}`,
+      op.collaborateur || '-',
+      op.type,
+      op.details || '-',
+      (op.items || []).map((i: OperationItem) => `${i.produit}: ${i.qte}`).join('\n')
+    ]);
 
     autoTable(doc, {
       startY: 15,
