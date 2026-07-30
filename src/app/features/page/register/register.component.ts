@@ -1,7 +1,9 @@
-import {ChangeDetectionStrategy, Component, inject, signal} from '@angular/core';
+import {ChangeDetectionStrategy, Component, inject, signal, OnInit, PLATFORM_ID} from '@angular/core';
+import {isPlatformBrowser} from '@angular/common';
 import {Router, RouterLink} from '@angular/router';
 import {FormBuilder, ReactiveFormsModule, Validators} from '@angular/forms';
 import {AuthService} from '../../../core/services/auth.service';
+import {CreatedUser} from '../../../shared/models/auth.model';
 
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -10,7 +12,8 @@ import {AuthService} from '../../../core/services/auth.service';
   templateUrl: './register.component.html',
   styleUrl: './register.component.scss'
 })
-export class RegisterComponent {
+export class RegisterComponent implements OnInit {
+  private readonly platformId = inject(PLATFORM_ID);
   private readonly fb = inject(FormBuilder);
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
@@ -18,8 +21,15 @@ export class RegisterComponent {
   readonly isLoading = signal(false);
   readonly errorMessage = signal('');
   readonly successMessage = signal('');
-
   readonly sites = ['SCMC', 'TUSCANI', 'AFISA', 'AUTRE'];
+
+  // State for user list
+  readonly createdUsers = signal<CreatedUser[]>([]);
+  readonly isLoadingUsers = signal<boolean>(false);
+  readonly errorUsers = signal<string>('');
+  
+  // State to toggle the creation form
+  readonly isFormVisible = signal<boolean>(false);
 
   readonly registerForm = this.fb.group({
     displayName: ['', [Validators.required]],
@@ -28,6 +38,29 @@ export class RegisterComponent {
     role: ['user', [Validators.required]],
     assignedSiteName: ['']
   });
+
+  ngOnInit() {
+    if (isPlatformBrowser(this.platformId)) {
+      this.loadUsers();
+    }
+  }
+
+  async loadUsers() {
+    this.isLoadingUsers.set(true);
+    this.errorUsers.set('');
+    const res = await this.authService.getCreatedUsers();
+    this.isLoadingUsers.set(false);
+    
+    if (res.success && res.users) {
+      this.createdUsers.set(res.users);
+    } else {
+      this.errorUsers.set(res.error || 'Erreur lors du chargement des collaborateurs.');
+    }
+  }
+
+  toggleForm() {
+    this.isFormVisible.update(v => !v);
+  }
 
   async onSubmit(): Promise<void> {
     if (this.registerForm.invalid) return;
@@ -48,6 +81,8 @@ export class RegisterComponent {
     if (res.success) {
       this.successMessage.set('Compte de collaborateur créé avec succès dans Supabase !');
       this.registerForm.reset({ role: 'user', assignedSiteName: '' });
+      this.loadUsers(); // Refresh the list
+      this.isFormVisible.set(false); // Hide the form after success
       setTimeout(() => {
         this.successMessage.set('');
       }, 6000);
