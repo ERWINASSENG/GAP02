@@ -223,7 +223,7 @@ export class ExcelExportService {
           op.items.forEach(item => {
             wsData.push([
               op.id,
-              op.date,
+              item.date || op.date,
               op.heure,
               op.collaborateur || '',
               item.dn,
