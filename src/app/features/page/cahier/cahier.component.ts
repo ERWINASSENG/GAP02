@@ -608,8 +608,28 @@ export class CahierComponent implements OnInit {
     this.isCreationPageOpen.set(true);
   }
 
+  isOperationWeekClosed(op: Operation): boolean {
+    if (!op) return false;
+    const weeks = this.cahierService.weeks();
+    if (op.week_id) {
+      const week = weeks.find(w => w.id === op.week_id);
+      if (week?.is_closed) return true;
+    }
+    if (op.site && op.date) {
+      const closed = weeks.find(w => w.site === op.site && w.is_closed && op.date >= w.start_date && op.date <= w.end_date);
+      if (closed) return true;
+    }
+    return false;
+  }
+
   // Opens form from an existing registered operation
   editOperation(op: Operation) {
+    if (this.isOperationWeekClosed(op)) {
+      this.validationBlockTitle.set('Modification impossible');
+      this.validationBlockMessage.set('Cette semaine est clôturée. L\'opération ne peut pas être modifiée.');
+      return;
+    }
+
     this.isEditingRegistered.set(true);
     this.itemsFormArray.clear();
     this.activeDraftId.set(op.id);
@@ -936,6 +956,12 @@ export class CahierComponent implements OnInit {
 
   // Deletes an operation with local confirmation
   deleteOp(id: string) {
+    const op = this.cahierService.operations().find(o => o.id === id);
+    if (op && this.isOperationWeekClosed(op)) {
+      this.validationBlockTitle.set('Suppression impossible');
+      this.validationBlockMessage.set('Cette semaine est clôturée. L\'opération ne peut pas être supprimée.');
+      return;
+    }
     this.operationToDelete.set(id);
   }
 

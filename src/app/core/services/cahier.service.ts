@@ -437,6 +437,15 @@ export class CahierService {
    * Validates if a date can be inserted for a specific site's week
    */
   validateOperationDate(site: string, dateStr: string): { allowed: boolean; reason?: string; activeWeek?: WorkWeek } {
+    // 1. Check if the date falls inside a closed week
+    const closedWeek = this._weeks().find(w => w.site === site && w.is_closed && dateStr >= w.start_date && dateStr <= w.end_date);
+    if (closedWeek) {
+      return {
+        allowed: false,
+        reason: `La semaine du ${closedWeek.start_date} au ${closedWeek.end_date} pour le site ${site} est clôturée. Aucune saisie ni modification n'est autorisée.`
+      };
+    }
+
     const active = this.getActiveWeek(site);
     if (!active) {
       return { allowed: true };
@@ -803,6 +812,25 @@ export class CahierService {
 
   async deleteOperation(id: string): Promise<boolean> {
     const previousOperations = this._operations();
+    const opToDelete = previousOperations.find(o => o.id === id);
+
+    if (opToDelete) {
+      if (opToDelete.week_id) {
+        const week = this._weeks().find(w => w.id === opToDelete.week_id);
+        if (week?.is_closed) {
+          console.warn('Cannot delete operation from a closed week');
+          return false;
+        }
+      }
+      if (opToDelete.site && opToDelete.date) {
+        const closed = this._weeks().find(w => w.site === opToDelete.site && w.is_closed && opToDelete.date >= w.start_date && opToDelete.date <= w.end_date);
+        if (closed) {
+          console.warn('Cannot delete operation from a closed week');
+          return false;
+        }
+      }
+    }
+
     const updated = previousOperations.filter(op => op.id !== id);
     this._operations.set(updated);
 
