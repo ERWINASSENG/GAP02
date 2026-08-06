@@ -38,7 +38,7 @@ export const routes: Routes = [
       {
         path: 'cahier',
         component: CahierComponent,
-        title: 'GAP APP - Opérations'
+        title: 'GAP APP - Cahier d\'Opérations'
       },
       {
         path: 'admin/view',

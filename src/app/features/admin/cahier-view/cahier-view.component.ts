@@ -1,4 +1,4 @@
-import { Component, inject, signal, computed, OnInit } from "@angular/core";
+import { Component, inject, signal, computed } from "@angular/core";
 import { CommonModule } from "@angular/common";
 import {
   ReactiveFormsModule,
@@ -19,11 +19,7 @@ import {
   WorkWeek,
 } from "../../../shared/models/cahier.model";
 import { AuthService } from "../../../core/services/auth.service";
-import {
-  CreatedUser,
-  PortRole,
-  UserProfileUpdate,
-} from "../../../shared/models/auth.model";
+import { PortRole } from "../../../shared/models/auth.model";
 
 interface TypeSiteGroup {
   key: string;
@@ -40,7 +36,7 @@ interface TypeSiteGroup {
   templateUrl: "./cahier-view.component.html",
   styleUrl: "./cahier-view.component.scss",
 })
-export class AdminCahierViewComponent implements OnInit {
+export class AdminCahierViewComponent {
   private readonly cahierService = inject(CahierService);
   private readonly pdfExportService = inject(PdfExportService);
   private readonly excelExportService = inject(ExcelExportService);
@@ -118,8 +114,6 @@ export class AdminCahierViewComponent implements OnInit {
   readonly operationToDelete = signal<string | null>(null);
   readonly isDeleting = signal<boolean>(false);
   readonly deleteError = signal<string | null>(null);
-
-  ngOnInit() {}
 
   private toPortRole(role: string | undefined): PortRole {
     return role === "admin" || role === "manager" || role === "user"

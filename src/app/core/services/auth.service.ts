@@ -112,7 +112,7 @@ export class AuthService {
         return { success: false, error: 'Session non valide ou expirée.' };
       }
 
-      const response = await fetch('/api/admin/users', {
+      const response = await fetch('/api/system/collaborators', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -146,7 +146,7 @@ export class AuthService {
         return { success: false, error: 'Session non valide ou expirée.' };
       }
 
-      const response = await fetch('/api/admin/users', {
+      const response = await fetch('/api/system/collaborators', {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -178,7 +178,7 @@ export class AuthService {
         return { success: false, error: 'Session non valide ou expirée.' };
       }
 
-      const response = await fetch(`/api/admin/users/${encodeURIComponent(userId)}`, {
+      const response = await fetch(`/api/system/collaborators/${encodeURIComponent(userId)}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',

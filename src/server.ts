@@ -17,7 +17,7 @@ const angularApp = new AngularNodeAppEngine();
 app.use(express.json());
 
 // API: Créer un utilisateur via le serveur (rôle administrateur requis)
-app.post('/api/admin/users', async (req, res) => {
+app.post('/api/system/collaborators', async (req, res) => {
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader) {
@@ -79,13 +79,13 @@ app.post('/api/admin/users', async (req, res) => {
     res.json({ success: true, user: createData.user });
   } catch (err: unknown) {
     const errMsg = err instanceof Error ? err.message : 'Internal Server Error';
-    console.error('Error in POST /api/admin/users:', errMsg);
+    console.error('Error in POST /api/system/collaborators:', errMsg);
     res.status(500).json({ error: errMsg });
   }
 });
 
 // API: Récupérer les utilisateurs créés par cet administrateur (rôle administrateur requis)
-app.get('/api/admin/users', async (req, res) => {
+app.get('/api/system/collaborators', async (req, res) => {
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader) {
@@ -135,13 +135,13 @@ app.get('/api/admin/users', async (req, res) => {
     res.json({ success: true, users: createdUsers });
   } catch (err: unknown) {
     const errMsg = err instanceof Error ? err.message : 'Internal Server Error';
-    console.error('Error in GET /api/admin/users:', errMsg);
+    console.error('Error in GET /api/system/collaborators:', errMsg);
     res.status(500).json({ error: errMsg });
   }
 });
 
 // API: Modifier le profil d'un utilisateur (rôle administrateur requis)
-app.patch('/api/admin/users/:id', async (req, res) => {
+app.patch('/api/system/collaborators/:id', async (req, res) => {
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader) {
@@ -235,13 +235,13 @@ app.patch('/api/admin/users/:id', async (req, res) => {
     res.json({ success: true, user: updateData.user });
   } catch (err: unknown) {
     const errMsg = err instanceof Error ? err.message : 'Internal Server Error';
-    console.error('Error in PATCH /api/admin/users/:id:', errMsg);
+    console.error('Error in PATCH /api/system/collaborators/:id:', errMsg);
     res.status(500).json({ error: errMsg });
   }
 });
 
 // API: Récupérer toutes les opérations (rôle administrateur requis)
-app.get('/api/admin/operations', async (req, res) => {
+app.get('/api/system/operations', async (req, res) => {
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader) {
@@ -291,7 +291,7 @@ app.get('/api/admin/operations', async (req, res) => {
     res.json({ success: true, operations: operationsData });
   } catch (err: unknown) {
     const errMsg = err instanceof Error ? err.message : 'Internal Server Error';
-    console.error('Error in GET /api/admin/operations:', errMsg);
+    console.error('Error in GET /api/system/operations:', errMsg);
     res.status(500).json({ error: errMsg });
   }
 });

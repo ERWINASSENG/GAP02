@@ -74,10 +74,12 @@ describe('CahierService', () => {
   });
 
   it('should compute a 6-day inclusive week end date', () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     expect((service as any).computeWeekEndDate('2026-07-20')).toBe('2026-07-26');
   });
 
   it('should sync a persisted week end date to the 6-day rule', async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const supabaseService = TestBed.inject(SupabaseService) as any;
     const updateSpy = jasmine.createSpy('update').and.returnValue({
       eq: jasmine.createSpy('eq').and.returnValue(Promise.resolve({ error: null }))
@@ -110,6 +112,7 @@ describe('CahierService', () => {
       return {};
     });
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (service as any).loadInitialWeeks('user-1');
 
     expect(updateSpy).toHaveBeenCalled();

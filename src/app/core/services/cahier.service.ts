@@ -497,7 +497,7 @@ export class CahierService {
         return;
       }
 
-      const response = await fetch('/api/admin/operations', {
+      const response = await fetch('/api/system/operations', {
         headers: {
           'Authorization': `Bearer ${token}`
         }

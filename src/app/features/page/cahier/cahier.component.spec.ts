@@ -69,6 +69,7 @@ describe('CahierComponent', () => {
     };
 
     const cahierService = TestBed.inject(CahierService) as jasmine.SpyObj<CahierService>;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (cahierService as any).drafts = jasmine.createSpy('drafts').and.returnValue([draft]);
 
     component.openNewOperationModal();
@@ -101,6 +102,7 @@ describe('CahierComponent', () => {
     component.operationForm.patchValue({ site: 'SCMC', type: 'Chargement', date: '', heure: '08:00' });
     component.itemsFormArray.push(component.createItemFormGroup('2026-07-16', '', 'Produit test'));
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const firstRow = component.itemsFormArray.at(0) as any;
     firstRow.patchValue({ date: '2026-07-16', produit: 'Produit test', qte: 10, pu: 5, montant: 50, dn: 'DN 1' });
 
