@@ -74,7 +74,11 @@
                         [class.border-indigo-200]="user.app_metadata?.role !== 'admin'">
                     {{ user.app_metadata?.role || 'user' }}
                   </span>
-                  @if (user.app_metadata?.assignedSiteName) {
+                  @if (user.app_metadata?.assignedSiteNames && user.app_metadata!.assignedSiteNames!.length > 0) {
+                    <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border bg-slate-50 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700">
+                      {{ user.app_metadata?.assignedSiteNames?.join(', ') }}
+                    </span>
+                  } @else if (user.app_metadata?.assignedSiteName) {
                     <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border bg-slate-50 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700">
                       {{ user.app_metadata?.assignedSiteName }}
                     </span>
@@ -171,27 +175,40 @@
           </div>
 
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
-            <div>
-              <label for="assignedSiteName" class="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">Site Assigné</label>
-              <div class="relative">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25s-7.5-4.108-7.5-11.25a7.5 7.5 0 1 1 15 0Z" />
-                </svg>
-                <select
-                  id="assignedSiteName"
-                  formControlName="assignedSiteName"
-                  class="w-full bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 text-slate-900 dark:text-white rounded-xl py-3 pl-10 pr-8 text-sm transition-all outline-none appearance-none cursor-pointer"
-                >
-                  <option value="" class="bg-white dark:bg-slate-950 text-slate-900 dark:text-white">Aucun</option>
-                  @for (site of sites; track site) {
-                    <option [value]="site" class="bg-white dark:bg-slate-950 text-slate-900 dark:text-white">{{ site }}</option>
-                  }
-                </select>
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
-                </svg>
+            <div class="sm:col-span-2">
+              <span class="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">Sites Assignés</span>
+              <div class="flex flex-wrap gap-2.5">
+                @for (site of sites; track site) {
+                  <button
+                    type="button"
+                    (click)="toggleSite(site)"
+                    [class.bg-indigo-600]="selectedSites().includes(site)"
+                    [class.text-white]="selectedSites().includes(site)"
+                    [class.border-indigo-600]="selectedSites().includes(site)"
+                    [class.shadow-xs]="selectedSites().includes(site)"
+                    [class.bg-slate-50]="!selectedSites().includes(site)"
+                    [class.text-slate-700]="!selectedSites().includes(site)"
+                    [class.dark:bg-slate-950/60]="!selectedSites().includes(site)"
+                    [class.dark:text-slate-300]="!selectedSites().includes(site)"
+                    [class.border-slate-200]="!selectedSites().includes(site)"
+                    [class.dark:border-slate-800]="!selectedSites().includes(site)"
+                    class="px-4 py-2 rounded-xl border text-xs font-bold transition-all hover:border-indigo-500 cursor-pointer flex items-center gap-2">
+                    @if (selectedSites().includes(site)) {
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                      </svg>
+                    }
+                    {{ site }}
+                  </button>
+                }
               </div>
+              <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-1.5">
+                @if (selectedSites().length === 0) {
+                  Aucun site sélectionné. L'utilisateur n'aura pas d'accès restreint par défaut.
+                } @else {
+                  Sites sélectionnés : <strong class="text-indigo-600 dark:text-indigo-400">{{ selectedSites().join(', ') }}</strong>
+                }
+              </p>
             </div>
 
             <div>

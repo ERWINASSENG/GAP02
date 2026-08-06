@@ -69,7 +69,8 @@ export class AuthService {
       role: appMetadata['role'] || 'user',
       avatarUrl: metadata['avatar_url'] || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150',
       assignedSiteId: appMetadata['assignedSiteId'] || undefined,
-      assignedSiteName: appMetadata['assignedSiteName'] || undefined
+      assignedSiteName: appMetadata['assignedSiteName'] || undefined,
+      assignedSiteNames: appMetadata['assignedSiteNames'] || (appMetadata['assignedSiteName'] ? [appMetadata['assignedSiteName']] : undefined)
     };
     this.currentUserSignal.set(portUser);
   }
@@ -103,7 +104,7 @@ export class AuthService {
   /**
    * Inscription d'un nouvel utilisateur dans Supabase via l'API sécurisée côté serveur
    */
-  async register(email: string, password: string, displayName: string, role: 'admin' | 'user' = 'user', assignedSiteName?: string): Promise<{ success: boolean; error?: string }> {
+  async register(email: string, password: string, displayName: string, role: 'admin' | 'user' = 'user', assignedSiteName?: string, assignedSiteNames?: string[]): Promise<{ success: boolean; error?: string }> {
     try {
       const session = await this.supabaseService.getSession();
       const token = session?.access_token;
@@ -118,7 +119,7 @@ export class AuthService {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ email, password, displayName, role, assignedSiteName })
+        body: JSON.stringify({ email, password, displayName, role, assignedSiteName, assignedSiteNames })
       });
 
       const data = await response.json();
@@ -189,7 +190,8 @@ export class AuthService {
           displayName: profile.displayName,
           avatarUrl: profile.avatarUrl,
           role: profile.role,
-          assignedSiteName: profile.assignedSiteName
+          assignedSiteName: profile.assignedSiteName,
+          assignedSiteNames: profile.assignedSiteNames
         })
       });
 

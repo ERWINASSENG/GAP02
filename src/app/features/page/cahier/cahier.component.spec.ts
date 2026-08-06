@@ -1,6 +1,6 @@
 import { TestBed, ComponentFixture } from '@angular/core/testing';
 import { CahierComponent } from './cahier.component';
-import { ReactiveFormsModule } from '@angular/forms';
+import { ReactiveFormsModule, FormGroup } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { CommonModule } from '@angular/common';
 import { CahierService } from '../../../core/services/cahier.service';
@@ -8,6 +8,7 @@ import { AuthService } from '../../../core/services/auth.service';
 import { PdfExportService } from '../../../core/services/pdf-export.service';
 import { DocxExportService } from '../../../core/services/docx-export.service';
 import { ExcelExportService } from '../../../core/services/excel-export.service';
+import { vi } from 'vitest';
 
 describe('CahierComponent', () => {
   let component: CahierComponent;
@@ -15,12 +16,12 @@ describe('CahierComponent', () => {
 
   beforeEach(async () => {
     const mockCahierService = {
-      validateOperationDate: jasmine.createSpy('validateOperationDate').and.returnValue({ allowed: true }),
-      addOperation: jasmine.createSpy('addOperation').and.returnValue(Promise.resolve({ id: 'op-1' }))
+      validateOperationDate: vi.fn().mockReturnValue({ allowed: true }),
+      addOperation: vi.fn().mockReturnValue(Promise.resolve({ id: 'op-1' }))
     };
 
     const mockAuthService = {
-      currentUser: jasmine.createSpy('currentUser').and.returnValue({ id: 'user-1', role: 'user', assignedSiteName: 'SCMC' })
+      currentUser: vi.fn().mockReturnValue({ id: 'user-1', role: 'user', assignedSiteName: 'SCMC' })
     };
 
     await TestBed.configureTestingModule({

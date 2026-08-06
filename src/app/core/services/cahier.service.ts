@@ -3,6 +3,7 @@ import { isPlatformBrowser } from '@angular/common';
 import { Operation, MonthlySummary, WorkWeek } from '../../shared/models/cahier.model';
 import { SupabaseService } from './supabase.service';
 import { AuthService } from './auth.service';
+import { PortUser } from '../../shared/models/auth.model';
 
 @Injectable({
   providedIn: 'root'
@@ -38,12 +39,24 @@ export class CahierService {
     });
   }
 
+  private getUserAssignedSites(user: PortUser | null): string[] {
+    if (!user) return [];
+    if (user.assignedSiteNames && user.assignedSiteNames.length > 0) {
+      return user.assignedSiteNames;
+    }
+    if (user.assignedSiteName) {
+      return [user.assignedSiteName];
+    }
+    return [];
+  }
+
   /**
    * Loads initial weeks from Supabase
    */
   private async loadInitialWeeks(userId?: string) {
     const user = this.authService.currentUser();
-    if (!userId || !user?.assignedSiteName) {
+    const userSites = this.getUserAssignedSites(user);
+    if (!userId || userSites.length === 0) {
       this._weeks.set([]);
       return;
     }
@@ -52,7 +65,7 @@ export class CahierService {
       const { data, error } = await this.supabaseService.client
         .from('cahier_weeks')
         .select('*')
-        .eq('site', user.assignedSiteName)
+        .in('site', userSites)
         .order('start_date', { ascending: false });
 
       if (!error && data) {
@@ -453,7 +466,8 @@ export class CahierService {
    */
   private async loadInitialOperations(userId?: string) {
     const user = this.authService.currentUser();
-    if (!userId || !user?.assignedSiteName) {
+    const userSites = this.getUserAssignedSites(user);
+    if (!userId || userSites.length === 0) {
       this._operations.set([]);
       return;
     }
@@ -462,7 +476,7 @@ export class CahierService {
       const { data, error } = await this.supabaseService.client
         .from('operations')
         .select('*, operation_items(*)')
-        .eq('site', user.assignedSiteName)
+        .in('site', userSites)
         .order('date', { ascending: false });
 
       if (!error && data) {

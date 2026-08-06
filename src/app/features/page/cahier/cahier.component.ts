@@ -57,6 +57,10 @@ export class CahierComponent implements OnInit {
       return ['SCMC', 'TUSCANI', 'AFISA', 'AUTRE'];
     }
 
+    if (user?.assignedSiteNames && user.assignedSiteNames.length > 0) {
+      return user.assignedSiteNames;
+    }
+
     const assignedSite = user?.assignedSiteName?.trim();
     return assignedSite ? [assignedSite] : [];
   });

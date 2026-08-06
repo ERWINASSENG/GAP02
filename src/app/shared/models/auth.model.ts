@@ -25,6 +25,7 @@ export interface PortUser {
   avatarUrl?: string;
   assignedSiteId?: string;
   assignedSiteName?: string;
+  assignedSiteNames?: string[];
   permissions?: UserPermissions;
 }
 
@@ -45,6 +46,7 @@ export interface CreatedUser {
     role?: string;
     created_by?: string;
     assignedSiteName?: string;
+    assignedSiteNames?: string[];
   };
   created_at?: string;
 }
@@ -55,4 +57,5 @@ export interface UserProfileUpdate {
   avatarUrl: string;
   role: PortRole;
   assignedSiteName: string;
+  assignedSiteNames?: string[];
 }

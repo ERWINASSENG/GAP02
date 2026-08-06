@@ -5,47 +5,46 @@ import { PdfExportService } from '../../../core/services/pdf-export.service';
 import { ExcelExportService } from '../../../core/services/excel-export.service';
 import { DocxExportService } from '../../../core/services/docx-export.service';
 import { AuthService } from '../../../core/services/auth.service';
-import { CreatedUser } from '../../../shared/models/auth.model';
 import { signal } from '@angular/core';
+import { vi } from 'vitest';
 
 describe('AdminCahierViewComponent', () => {
   let component: AdminCahierViewComponent;
   let fixture: ComponentFixture<AdminCahierViewComponent>;
   let mockCahierService: Partial<CahierService>;
   let mockPdfExportService: Partial<PdfExportService>;
-  let mockAuthService: Partial<AuthService>;
-
-  const createdUser: CreatedUser = {
-    id: 'user-1',
-    email: 'collaborateur@example.com',
-    user_metadata: {
-      display_name: 'Jean Dupont',
-      avatar_url: 'https://example.com/avatar.jpg'
-    },
-    app_metadata: {
-      role: 'user',
-      created_by: 'admin-1',
-      assignedSiteName: 'SCMC'
-    }
-  };
+  let mockExcelExportService: Partial<ExcelExportService>;
+  let mockDocxExportService: Partial<DocxExportService>;
 
   beforeEach(async () => {
     mockCahierService = {
       adminMonthlySummaries: signal([]),
       adminWeeks: signal([]),
-      adminOperations: signal([])
+      adminOperations: signal([
+        {
+          id: 'op-1',
+          type: 'Chargement',
+          site: 'SCMC',
+          date: '2026-08-01',
+          heure: '08:00',
+          isDraft: false,
+          items: [{ date: '2026-08-01', dn: 'DN 100', produit: 'Blé', qte: 10, pu: 5, montant: 50 }]
+        }
+      ]),
+      adminUpdateOperation: vi.fn().mockResolvedValue({ success: true }),
+      adminDeleteOperation: vi.fn().mockResolvedValue(true),
+      adminReopenWeek: vi.fn().mockResolvedValue({ success: true })
     };
     mockPdfExportService = {
-      exportMonthlySummary: jasmine.createSpy('exportMonthlySummary')
+      exportMonthlySummary: vi.fn()
     };
-    mockAuthService = {
-      getCreatedUsers: jasmine.createSpy('getCreatedUsers').and.resolveTo({ success: true, users: [createdUser] }),
-      updateCreatedUser: jasmine.createSpy('updateCreatedUser').and.resolveTo({ success: true, user: {
-        ...createdUser,
-        email: 'jean.dupont@example.com',
-        user_metadata: { ...createdUser.user_metadata, display_name: 'Jean Martin' },
-        app_metadata: { ...createdUser.app_metadata, assignedSiteName: 'AFISA' }
-      } })
+    mockExcelExportService = {
+      exportMonthlySummaryToExcel: vi.fn(),
+      exportOperationGroupsToExcel: vi.fn()
+    };
+    mockDocxExportService = {
+      exportMonthlySummaryToDocx: vi.fn(),
+      exportOperationGroupsToDocx: vi.fn()
     };
 
     await TestBed.configureTestingModule({
@@ -53,9 +52,9 @@ describe('AdminCahierViewComponent', () => {
       providers: [
         { provide: CahierService, useValue: mockCahierService },
         { provide: PdfExportService, useValue: mockPdfExportService },
-        { provide: ExcelExportService, useValue: { exportMonthlySummaryToExcel: jasmine.createSpy('exportMonthlySummaryToExcel') } },
-        { provide: DocxExportService, useValue: { exportMonthlySummaryToDocx: jasmine.createSpy('exportMonthlySummaryToDocx') } },
-        { provide: AuthService, useValue: mockAuthService }
+        { provide: ExcelExportService, useValue: mockExcelExportService },
+        { provide: DocxExportService, useValue: mockDocxExportService },
+        { provide: AuthService, useValue: {} }
       ]
     }).compileComponents();
 
@@ -68,59 +67,30 @@ describe('AdminCahierViewComponent', () => {
     expect(component).toBeTruthy();
   });
 
-  it('should open and prefill the selected user profile', () => {
-    component.openUserProfile(createdUser);
-
-    expect(component.selectedUser()).toEqual(createdUser);
-    expect(component.userEditForm.getRawValue()).toEqual({
-      displayName: 'Jean Dupont',
-      email: 'collaborateur@example.com',
-      avatarUrl: 'https://example.com/avatar.jpg',
-      role: 'user',
-      assignedSiteName: 'SCMC'
-    });
+  it('should group operations by type and site', () => {
+    const groups = component.groupedByTypeSite();
+    expect(groups.length).toBe(1);
+    expect(groups[0].type).toBe('Chargement');
+    expect(groups[0].site).toBe('SCMC');
+    expect(groups[0].count).toBe(1);
   });
 
-  it('should not save an invalid profile', async () => {
-    component.openUserProfile(createdUser);
-    component.userEditForm.controls.email.setValue('adresse-invalide');
+  it('should manage group selections for targeted export', () => {
+    expect(component.hasSelection()).toBeFalse();
+    component.toggleGroupSelection('Chargement|SCMC');
+    expect(component.hasSelection()).toBeTrue();
 
-    await component.saveUserProfile();
+    component.exportSelectionToExcel();
+    expect(mockExcelExportService.exportOperationGroupsToExcel).toHaveBeenCalled();
 
-    expect(mockAuthService.updateCreatedUser).not.toHaveBeenCalled();
-    expect(component.userEditForm.controls.email.touched).toBeTrue();
+    component.clearSelection();
+    expect(component.hasSelection()).toBeFalse();
   });
 
-  it('should save the profile and update the user list', async () => {
-    component.openUserProfile(createdUser);
-    component.userEditForm.patchValue({
-      displayName: 'Jean Martin',
-      email: 'jean.dupont@example.com',
-      assignedSiteName: 'AFISA'
-    });
-
-    await component.saveUserProfile();
-
-    expect(mockAuthService.updateCreatedUser).toHaveBeenCalledWith('user-1', jasmine.objectContaining({
-      displayName: 'Jean Martin',
-      email: 'jean.dupont@example.com',
-      assignedSiteName: 'AFISA'
-    }));
-    expect(component.createdUsers()[0].user_metadata?.display_name).toBe('Jean Martin');
-    expect(component.createdUsers()[0].app_metadata?.assignedSiteName).toBe('AFISA');
-    expect(component.userEditSuccess()).toBe('Profil enregistré avec succès.');
-  });
-
-  it('should display the API error without changing the user list', async () => {
-    component.openUserProfile(createdUser);
-    mockAuthService.updateCreatedUser = jasmine.createSpy('updateCreatedUser')
-      .and.resolveTo({ success: false, error: 'Accès refusé.' });
-
-    component.userEditForm.controls.displayName.setValue('Nom modifié');
-    await component.saveUserProfile();
-
-    expect(component.userEditError()).toBe('Accès refusé.');
-    expect(component.createdUsers()[0]).toEqual(createdUser);
-    expect(component.userEditSuccess()).toBe('');
+  it('should calculate operation totals accurately', () => {
+    const cahierSvc = TestBed.inject(CahierService);
+    const op = cahierSvc.adminOperations()[0];
+    const total = component.getOperationTotal(op);
+    expect(total).toBe(50);
   });
 });

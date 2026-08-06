@@ -22,6 +22,7 @@ export class RegisterComponent implements OnInit {
   readonly errorMessage = signal('');
   readonly successMessage = signal('');
   readonly sites = ['SCMC', 'TUSCANI', 'AFISA', 'AUTRE'];
+  readonly selectedSites = signal<string[]>([]);
 
   // State for user list
   readonly createdUsers = signal<CreatedUser[]>([]);
@@ -38,6 +39,16 @@ export class RegisterComponent implements OnInit {
     role: ['user', [Validators.required]],
     assignedSiteName: ['']
   });
+
+  toggleSite(site: string) {
+    this.selectedSites.update(current => {
+      if (current.includes(site)) {
+        return current.filter(s => s !== site);
+      } else {
+        return [...current, site];
+      }
+    });
+  }
 
   ngOnInit() {
     if (isPlatformBrowser(this.platformId)) {
@@ -73,14 +84,17 @@ export class RegisterComponent implements OnInit {
     const email = this.registerForm.value.email ?? '';
     const password = this.registerForm.value.password ?? '';
     const role = (this.registerForm.value.role as 'admin' | 'user') ?? 'user';
-    const assignedSiteName = this.registerForm.value.assignedSiteName ?? undefined;
+    
+    const sitesList = this.selectedSites();
+    const primarySite = sitesList.length > 0 ? sitesList[0] : (this.registerForm.value.assignedSiteName || undefined);
 
-    const res = await this.authService.register(email, password, displayName, role, assignedSiteName);
+    const res = await this.authService.register(email, password, displayName, role, primarySite, sitesList);
     this.isLoading.set(false);
 
     if (res.success) {
       this.successMessage.set('Compte de collaborateur créé avec succès dans Supabase !');
       this.registerForm.reset({ role: 'user', assignedSiteName: '' });
+      this.selectedSites.set([]);
       this.loadUsers(); // Refresh the list
       this.isFormVisible.set(false); // Hide the form after success
       setTimeout(() => {

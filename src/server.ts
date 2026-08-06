@@ -53,7 +53,11 @@ app.post('/api/system/collaborators', async (req, res) => {
       return;
     }
 
-    const { email, password, displayName, role, assignedSiteName } = req.body;
+    const { email, password, displayName, role, assignedSiteName, assignedSiteNames } = req.body;
+    const sitesList: string[] = Array.isArray(assignedSiteNames) 
+      ? assignedSiteNames.filter((s: unknown) => typeof s === 'string' && (s as string).trim().length > 0)
+      : (typeof assignedSiteName === 'string' && assignedSiteName.trim() ? [assignedSiteName.trim()] : []);
+    const primarySite = sitesList.length > 0 ? sitesList[0] : (typeof assignedSiteName === 'string' ? assignedSiteName.trim() : '');
 
     // Create the new user using the admin API
     const { data: createData, error } = await supabaseAdmin.auth.admin.createUser({
@@ -63,7 +67,8 @@ app.post('/api/system/collaborators', async (req, res) => {
       app_metadata: {
         role: role || 'user',
         created_by: user.id,
-        ...(assignedSiteName ? { assignedSiteName } : {})
+        ...(primarySite ? { assignedSiteName: primarySite } : {}),
+        assignedSiteNames: sitesList
       },
       user_metadata: {
         display_name: displayName,
@@ -182,7 +187,7 @@ app.patch('/api/system/collaborators/:id', async (req, res) => {
       return;
     }
 
-    const { email, displayName, avatarUrl, role, assignedSiteName } = req.body ?? {};
+    const { email, displayName, avatarUrl, role, assignedSiteName, assignedSiteNames } = req.body ?? {};
 
     if (typeof email !== 'string' || !email.trim() || !email.includes('@')) {
       res.status(400).json({ error: 'Une adresse e-mail valide est requise.' });
@@ -196,10 +201,15 @@ app.patch('/api/system/collaborators/:id', async (req, res) => {
       res.status(400).json({ error: 'Le rôle sélectionné est invalide.' });
       return;
     }
-    if (typeof avatarUrl !== 'string' || typeof assignedSiteName !== 'string') {
+    if (typeof avatarUrl !== 'string') {
       res.status(400).json({ error: 'Les informations du profil sont invalides.' });
       return;
     }
+
+    const sitesList: string[] = Array.isArray(assignedSiteNames)
+      ? assignedSiteNames.filter((s: unknown) => typeof s === 'string' && (s as string).trim().length > 0)
+      : (typeof assignedSiteName === 'string' && assignedSiteName.trim() ? [assignedSiteName.trim()] : []);
+    const primarySiteName = sitesList.length > 0 ? sitesList[0] : (typeof assignedSiteName === 'string' ? assignedSiteName.trim() : '');
 
     const { data: existingUserData, error: existingUserError } = await supabaseAdmin.auth.admin.getUserById(userId);
     if (existingUserError || !existingUserData.user) {
@@ -223,7 +233,8 @@ app.patch('/api/system/collaborators/:id', async (req, res) => {
       app_metadata: {
         ...existingAppMetadata,
         role,
-        assignedSiteName: assignedSiteName.trim()
+        assignedSiteName: primarySiteName,
+        assignedSiteNames: sitesList
       }
     });
 
