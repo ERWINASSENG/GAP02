@@ -511,31 +511,48 @@ export class CahierService {
       return;
     }
 
+    let fetchedFromApi = false;
+
     try {
       const session = await this.supabaseService.getSession();
       const token = session?.access_token;
 
-      if (!token) {
-        console.error('❌ Erreur: Session non valide pour admin fetch.');
-        return;
-      }
+      if (token) {
+        const response = await fetch('/api/system/operations', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
 
-      const response = await fetch('/api/system/operations', {
-        headers: {
-          'Authorization': `Bearer ${token}`
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.operations) {
+            const mappedOps = this.mapDatabaseOperations(data.operations);
+            this._adminOperations.set(mappedOps);
+            fetchedFromApi = true;
+          }
         }
-      });
-
-      const data = await response.json();
-
-      if (response.ok && data.success && data.operations) {
-        const mappedOps = this.mapDatabaseOperations(data.operations);
-        this._adminOperations.set(mappedOps);
-      } else {
-        console.error('❌ Erreur serveur (Admin Fetch):', data.error);
       }
-    } catch (err) {
-      console.error('❌ Erreur Réseau (Admin Fetch):', err);
+    } catch {
+      // Endpoint API non joignable ou clé serveur absente : repli vers la requête Supabase directe
+    }
+
+    if (!fetchedFromApi) {
+      try {
+        const { data, error } = await this.supabaseService.client
+          .from('operations')
+          .select('*, operation_items(*)')
+          .order('date', { ascending: false });
+
+        if (!error && data) {
+          const mappedOps = this.mapDatabaseOperations(data);
+          this._adminOperations.set(mappedOps);
+        } else if (error) {
+          console.error('❌ Erreur Supabase (Fetch opérations admin):', error.message);
+        }
+      } catch (err) {
+        console.error('❌ Erreur Supabase direct (Admin Fetch):', err);
+      }
     }
   }
 

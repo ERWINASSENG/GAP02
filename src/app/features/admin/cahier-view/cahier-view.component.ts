@@ -1,25 +1,23 @@
-import { Component, inject, signal, computed } from "@angular/core";
-import { CommonModule } from "@angular/common";
+import { Component, inject, signal, computed } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import {
   ReactiveFormsModule,
   FormGroup,
   FormControl,
   FormArray,
   Validators,
-} from "@angular/forms";
-import { CahierService } from "../../../core/services/cahier.service";
-import { PdfExportService } from "../../../core/services/pdf-export.service";
-import { ExcelExportService } from "../../../core/services/excel-export.service";
-import { DocxExportService } from "../../../core/services/docx-export.service";
+} from '@angular/forms';
+import { CahierService } from '../../../core/services/cahier.service';
+import { PdfExportService } from '../../../core/services/pdf-export.service';
+import { ExcelExportService } from '../../../core/services/excel-export.service';
+import { DocxExportService } from '../../../core/services/docx-export.service';
 import {
-  MonthlySummary,
   Operation,
   OperationItem,
   OPERATION_TYPES,
   WorkWeek,
-} from "../../../shared/models/cahier.model";
-import { AuthService } from "../../../core/services/auth.service";
-import { PortRole } from "../../../shared/models/auth.model";
+} from '../../../shared/models/cahier.model';
+import { AuthService } from '../../../core/services/auth.service';
 
 interface TypeSiteGroup {
   key: string;
@@ -30,29 +28,93 @@ interface TypeSiteGroup {
   count: number;
 }
 
+export interface WeekWithStats extends WorkWeek {
+  operationsCount: number;
+  totalMontant: number;
+}
+
 @Component({
-  selector: "app-admin-cahier-view",
+  selector: 'app-admin-cahier-view',
   imports: [CommonModule, ReactiveFormsModule],
-  templateUrl: "./cahier-view.component.html",
-  styleUrl: "./cahier-view.component.scss",
+  templateUrl: './cahier-view.component.html',
+  styleUrl: './cahier-view.component.scss',
 })
 export class AdminCahierViewComponent {
   private readonly cahierService = inject(CahierService);
   private readonly pdfExportService = inject(PdfExportService);
   private readonly excelExportService = inject(ExcelExportService);
   private readonly docxExportService = inject(DocxExportService);
-  private readonly authService = inject(AuthService);
+  readonly authService = inject(AuthService);
 
   readonly adminWeeks = this.cahierService.adminWeeks;
 
-  readonly sites = ["SCMC", "TUSCANI", "AFISA", "AUTRE"];
+  readonly sites = ['SCMC', 'TUSCANI', 'AFISA', 'AUTRE'];
   readonly operationTypes = OPERATION_TYPES;
 
-  // Regroupement par type d'opération + site, pour l'export ciblé
-  readonly groupedByTypeSite = computed<TypeSiteGroup[]>(() => {
-    const ops = this.cahierService
-      .adminOperations()
-      .filter((op) => !op.isDraft);
+  // Sélection de semaine active/clôturée
+  readonly selectedWeekId = signal<string | null>(null);
+  readonly selectedSiteFilter = signal<string>('TOUS');
+  readonly selectedStatusFilter = signal<'ALL' | 'ACTIVE' | 'CLOSED'>('ALL');
+
+  // Semaines enrichies avec leurs statistiques
+  readonly weeksWithStats = computed<WeekWithStats[]>(() => {
+    const weeks = this.adminWeeks();
+    const ops = this.cahierService.adminOperations().filter(o => !o.isDraft);
+
+    return weeks.map(week => {
+      const weekOps = ops.filter(op => 
+        op.week_id === week.id ||
+        (op.site === week.site && op.date >= week.start_date && op.date <= week.end_date)
+      );
+      const totalMontant = weekOps.reduce((sum, op) => sum + this.getOperationTotal(op), 0);
+
+      return {
+        ...week,
+        operationsCount: weekOps.length,
+        totalMontant
+      };
+    });
+  });
+
+  // Filtrage des cartes de semaines
+  readonly filteredWeeks = computed<WeekWithStats[]>(() => {
+    let result = this.weeksWithStats();
+
+    const site = this.selectedSiteFilter();
+    if (site !== 'TOUS') {
+      result = result.filter(w => w.site === site);
+    }
+
+    const status = this.selectedStatusFilter();
+    if (status === 'ACTIVE') {
+      result = result.filter(w => !w.is_closed);
+    } else if (status === 'CLOSED') {
+      result = result.filter(w => w.is_closed);
+    }
+
+    // Tri du plus récent au plus ancien
+    return result.sort((a, b) => b.start_date.localeCompare(a.start_date));
+  });
+
+  // Semaine actuellement sélectionnée pour afficher ses tableaux
+  readonly selectedWeek = computed<WorkWeek | null>(() => {
+    const id = this.selectedWeekId();
+    if (!id) return null;
+    return this.adminWeeks().find(w => w.id === id) || null;
+  });
+
+  // Opérations de la semaine sélectionnée regroupées par type/site
+  readonly selectedWeekGroups = computed<TypeSiteGroup[]>(() => {
+    const week = this.selectedWeek();
+    if (!week) return [];
+
+    const ops = this.cahierService.adminOperations().filter(op => 
+      !op.isDraft && (
+        op.week_id === week.id ||
+        (op.site === week.site && op.date >= week.start_date && op.date <= week.end_date)
+      )
+    );
+
     const groups: Record<string, Operation[]> = {};
     ops.forEach((op) => {
       const key = `${op.type}|${op.site}`;
@@ -63,11 +125,9 @@ export class AdminCahierViewComponent {
     return Object.keys(groups)
       .sort()
       .map((key) => {
-        const [type, site] = key.split("|");
+        const [type, site] = key.split('|');
         const groupOps = [...groups[key]].sort((a, b) =>
-          `${b.date}T${b.heure || ""}`.localeCompare(
-            `${a.date}T${a.heure || ""}`,
-          ),
+          `${b.date}T${b.heure || ''}`.localeCompare(`${a.date}T${a.heure || ''}`)
         );
         return {
           key,
@@ -89,23 +149,23 @@ export class AdminCahierViewComponent {
   readonly editError = signal<string | null>(null);
 
   readonly editForm = new FormGroup({
-    site: new FormControl<string>("", {
+    site: new FormControl<string>('', {
       nonNullable: true,
       validators: [Validators.required],
     }),
-    type: new FormControl<string>("", {
+    type: new FormControl<string>('', {
       nonNullable: true,
       validators: [Validators.required],
     }),
-    date: new FormControl<string>("", {
+    date: new FormControl<string>('', {
       nonNullable: true,
       validators: [Validators.required],
     }),
-    heure: new FormControl<string>("", {
+    heure: new FormControl<string>('', {
       nonNullable: true,
       validators: [Validators.required],
     }),
-    produit: new FormControl<string>(""),
+    produit: new FormControl<string>(''),
     quantite: new FormControl<number | null>(null),
     items: new FormArray<FormGroup>([]),
   });
@@ -115,18 +175,76 @@ export class AdminCahierViewComponent {
   readonly isDeleting = signal<boolean>(false);
   readonly deleteError = signal<string | null>(null);
 
-  private toPortRole(role: string | undefined): PortRole {
-    return role === "admin" || role === "manager" || role === "user"
-      ? role
-      : "user";
+  // --- Navigation & Actions sur les semaines ---
+
+  selectWeek(weekId: string) {
+    this.selectedWeekId.set(weekId);
+    this.selectedGroupKeys.set(new Set());
   }
 
-  exportToPdf(summary: MonthlySummary) {
-    this.pdfExportService.exportMonthlySummary(summary);
+  clearSelectedWeek() {
+    this.selectedWeekId.set(null);
+    this.selectedGroupKeys.set(new Set());
   }
 
-  exportToExcel(summary: MonthlySummary) {
-    this.excelExportService.exportMonthlySummaryToExcel(summary);
+  exportWeekToExcel(week: WorkWeek, event?: MouseEvent) {
+    if (event) event.stopPropagation();
+    const ops = this.cahierService.adminOperations().filter(op => 
+      !op.isDraft && (
+        op.week_id === week.id ||
+        (op.site === week.site && op.date >= week.start_date && op.date <= week.end_date)
+      )
+    );
+    const groupsMap: Record<string, Operation[]> = {};
+    ops.forEach((op) => {
+      const key = `${op.type}|${op.site}`;
+      if (!groupsMap[key]) groupsMap[key] = [];
+      groupsMap[key].push(op);
+    });
+
+    const groups: TypeSiteGroup[] = Object.keys(groupsMap).map((key) => {
+      const [type, site] = key.split('|');
+      return {
+        key,
+        type,
+        site,
+        label: `${type} — ${site}`,
+        ops: groupsMap[key],
+        count: groupsMap[key].length,
+      };
+    });
+
+    this.excelExportService.exportOperationGroupsToExcel(groups);
+  }
+
+  exportWeekToDocx(week: WorkWeek, event?: MouseEvent) {
+    if (event) event.stopPropagation();
+    const ops = this.cahierService.adminOperations().filter(op => 
+      !op.isDraft && (
+        op.week_id === week.id ||
+        (op.site === week.site && op.date >= week.start_date && op.date <= week.end_date)
+      )
+    );
+    const groupsMap: Record<string, Operation[]> = {};
+    ops.forEach((op) => {
+      const key = `${op.type}|${op.site}`;
+      if (!groupsMap[key]) groupsMap[key] = [];
+      groupsMap[key].push(op);
+    });
+
+    const groups: TypeSiteGroup[] = Object.keys(groupsMap).map((key) => {
+      const [type, site] = key.split('|');
+      return {
+        key,
+        type,
+        site,
+        label: `${type} — ${site}`,
+        ops: groupsMap[key],
+        count: groupsMap[key].length,
+      };
+    });
+
+    this.docxExportService.exportOperationGroupsToDocx(groups);
   }
 
   getItemAmount(item: OperationItem): number {
@@ -151,25 +269,18 @@ export class AdminCahierViewComponent {
     return group.ops.reduce((sum, op) => sum + this.getOperationTotal(op), 0);
   }
 
-  getSummaryTotal(summary: MonthlySummary): number {
-    return summary.operations.reduce(
-      (sum, op) => sum + this.getOperationTotal(op),
-      0,
-    );
-  }
-
   getIdentifierLabel(op: Operation): string {
-    const type = op.type?.toLowerCase() || "";
-    return type.includes("wagon") || type.includes("camion")
-      ? "N° wagon"
-      : "DN / LTI / ISTI";
+    const type = op.type?.toLowerCase() || '';
+    return type.includes('wagon') || type.includes('camion')
+      ? 'N° wagon'
+      : 'DN / LTI / ISTI';
   }
 
   getGroupTitle(group: TypeSiteGroup): string {
-    const type = (group.type || "").trim().toUpperCase();
-    const site = (group.site || "").trim().toUpperCase();
+    const type = (group.type || '').trim().toUpperCase();
+    const site = (group.site || '').trim().toUpperCase();
 
-    if (type === "CHARGEMENT" && site) {
+    if (type === 'CHARGEMENT' && site) {
       return `CHARGEMENT ${site}`;
     }
 
@@ -179,8 +290,6 @@ export class AdminCahierViewComponent {
 
     return group.label.toUpperCase();
   }
-
-  // --- Sélection de groupes type/site pour export ciblé ---
 
   isGroupSelected(key: string): boolean {
     return this.selectedGroupKeys().has(key);
@@ -202,7 +311,7 @@ export class AdminCahierViewComponent {
 
   private getSelectedGroups(): TypeSiteGroup[] {
     const keys = this.selectedGroupKeys();
-    return this.groupedByTypeSite().filter((g) => keys.has(g.key));
+    return this.selectedWeekGroups().filter((g) => keys.has(g.key));
   }
 
   exportGroupToExcel(group: TypeSiteGroup) {
@@ -226,56 +335,55 @@ export class AdminCahierViewComponent {
   }
 
   // --- Édition ---
-
   get editItemsArray(): FormArray {
-    return this.editForm.get("items") as FormArray;
+    return this.editForm.get('items') as FormArray;
   }
 
   isEditWagonOperation(): boolean {
-    const type = (this.editForm.get("type")?.value || "").toLowerCase();
-    return type.includes("wagon");
+    const type = (this.editForm.get('type')?.value || '').toLowerCase();
+    return type.includes('wagon');
   }
 
   isEditCamionOperation(): boolean {
-    const type = (this.editForm.get("type")?.value || "").toLowerCase();
-    return type.includes("camion");
+    const type = (this.editForm.get('type')?.value || '').toLowerCase();
+    return type.includes('camion');
   }
 
   isEditChargementWithPrefix(): boolean {
-    const type = (this.editForm.get("type")?.value || "").toLowerCase();
-    const site = (this.editForm.get("site")?.value || "").toLowerCase();
-    return type === "chargement" && (site === "afisa" || site === "scmc");
+    const type = (this.editForm.get('type')?.value || '').toLowerCase();
+    const site = (this.editForm.get('site')?.value || '').toLowerCase();
+    return type === 'chargement' && (site === 'afisa' || site === 'scmc');
   }
 
   getEditItemIdentifierLabel(): string {
     if (this.isEditWagonOperation()) {
-      return "N° WAGON";
+      return 'N° WAGON';
     }
     if (this.isEditCamionOperation()) {
-      return "CAMIONS";
+      return 'CAMIONS';
     }
-    return "DN / LTI / ISTI";
+    return 'DN / LTI / ISTI';
   }
 
   getEditItemSecondColumnLabel(): string {
     if (this.isEditWagonOperation()) {
-      const product = (this.editForm.get("produit")?.value || "").toLowerCase();
-      return product.includes("blé") || product.includes("ble")
-        ? "TONNAGE"
-        : "Nbr SACS";
+      const product = (this.editForm.get('produit')?.value || '').toLowerCase();
+      return product.includes('blé') || product.includes('ble')
+        ? 'TONNAGE'
+        : 'Nbr SACS';
     }
     if (this.isEditCamionOperation()) {
-      return "TONNAGE";
+      return 'TONNAGE';
     }
-    return "PRODUIT";
+    return 'PRODUIT';
   }
 
   getEditItemDnValue(prefix: string, numberValue: string): string {
-    const prefixValue = (prefix || "").trim().toUpperCase();
-    const numberText = (numberValue || "").trim();
+    const prefixValue = (prefix || '').trim().toUpperCase();
+    const numberText = (numberValue || '').trim();
 
     if (!numberText) {
-      return "";
+      return '';
     }
 
     if (this.isEditWagonOperation() || this.isEditCamionOperation()) {
@@ -283,9 +391,9 @@ export class AdminCahierViewComponent {
     }
 
     if (
-      prefixValue === "DN" ||
-      prefixValue === "LTI" ||
-      prefixValue === "ISTI"
+      prefixValue === 'DN' ||
+      prefixValue === 'LTI' ||
+      prefixValue === 'ISTI'
     ) {
       return `${prefixValue} ${numberText}`;
     }
@@ -294,23 +402,23 @@ export class AdminCahierViewComponent {
   }
 
   private createEditItemGroup(item?: Partial<OperationItem>): FormGroup {
-    const initialDn = item?.dn || "";
+    const initialDn = item?.dn || '';
     const prefixMatch = initialDn.match(/^(DN|LTI|ISTI)\b/i);
-    const prefix = prefixMatch ? prefixMatch[1].toUpperCase() : "DN";
-    const dnNumber = initialDn.replace(/^(DN|LTI|ISTI)\s*/i, "").trim();
+    const prefix = prefixMatch ? prefixMatch[1].toUpperCase() : 'DN';
+    const dnNumber = initialDn.replace(/^(DN|LTI|ISTI)\s*/i, '').trim();
 
     return new FormGroup({
       id: new FormControl<string | undefined>(item?.id),
       date: new FormControl<string>(
-        item?.date || this.editForm.get("date")?.value || "",
+        item?.date || this.editForm.get('date')?.value || '',
         { nonNullable: true },
       ),
       dnPrefix: new FormControl<string>(
-        this.isEditChargementWithPrefix() ? prefix : "DN",
+        this.isEditChargementWithPrefix() ? prefix : 'DN',
         { nonNullable: true },
       ),
       dnNumber: new FormControl<string>(dnNumber, { nonNullable: true }),
-      produit: new FormControl<string>(item?.produit || "", {
+      produit: new FormControl<string>(item?.produit || '', {
         nonNullable: true,
       }),
       qte: new FormControl<number>(item?.qte ?? 0, { nonNullable: true }),
@@ -330,7 +438,7 @@ export class AdminCahierViewComponent {
       type: op.type,
       date: op.date,
       heure: op.heure,
-      produit: op.produit || "",
+      produit: op.produit || '',
       quantite: op.quantite ?? null,
     });
     (op.items || []).forEach((item) =>
@@ -353,9 +461,9 @@ export class AdminCahierViewComponent {
 
   recalculateItemMontant(index: number) {
     const group = this.editItemsArray.at(index);
-    const qte = Number(group.get("qte")?.value) || 0;
-    const pu = Number(group.get("pu")?.value) || 0;
-    group.get("montant")?.setValue(qte * pu);
+    const qte = Number(group.get('qte')?.value) || 0;
+    const pu = Number(group.get('pu')?.value) || 0;
+    group.get('montant')?.setValue(qte * pu);
   }
 
   async saveEdit() {
@@ -374,15 +482,15 @@ export class AdminCahierViewComponent {
     const items: OperationItem[] = this.editItemsArray.controls.map((ctrl) => {
       const v = ctrl.getRawValue();
       const dnValue = this.getEditItemDnValue(
-        v.dnPrefix || "DN",
-        v.dnNumber || "",
+        v.dnPrefix || 'DN',
+        v.dnNumber || '',
       );
 
       return {
         id: v.id,
         date: v.date || val.date,
         dn: dnValue,
-        produit: v.produit || "",
+        produit: v.produit || '',
         qte: Number(v.qte) || 0,
         pu: Number(v.pu) || 0,
         montant: Number(v.montant) || 0,
@@ -392,10 +500,10 @@ export class AdminCahierViewComponent {
     const updatedOp: Operation = {
       ...op,
       site: val.site,
-      type: val.type as Operation["type"],
+      type: val.type as Operation['type'],
       date: val.date,
       heure: val.heure,
-      produit: val.produit || "",
+      produit: val.produit || '',
       quantite: val.quantite ?? undefined,
       items,
     };
@@ -450,13 +558,14 @@ export class AdminCahierViewComponent {
   readonly weekToReopen = signal<WorkWeek | null>(null);
 
   formatDateFr(dateStr: string): string {
-    if (!dateStr) return "";
-    const parts = dateStr.split("-");
+    if (!dateStr) return '';
+    const parts = dateStr.split('-');
     if (parts.length !== 3) return dateStr;
     return `${parts[2]}/${parts[1]}/${parts[0]}`;
   }
 
-  confirmReopen(week: WorkWeek) {
+  confirmReopen(week: WorkWeek, event?: MouseEvent) {
+    if (event) event.stopPropagation();
     this.reopenError.set(null);
     this.weekToReopen.set(week);
   }
@@ -476,7 +585,7 @@ export class AdminCahierViewComponent {
       const res = await this.cahierService.adminReopenWeek(week.id);
       if (!res.success) {
         this.reopenError.set(
-          res.error || "Erreur lors de la réouverture de la semaine.",
+          res.error || 'Erreur lors de la réouverture de la semaine.',
         );
       } else {
         this.weekToReopen.set(null);
@@ -485,7 +594,7 @@ export class AdminCahierViewComponent {
       this.reopenError.set(
         err instanceof Error
           ? err.message
-          : "Une erreur inattendue est survenue.",
+          : 'Une erreur inattendue est survenue.',
       );
     } finally {
       this.isReopening.set(false);
