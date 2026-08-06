@@ -57,12 +57,25 @@
       } @else {
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           @for (user of createdUsers(); track user.id) {
-            <div class="flex items-center gap-4 p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 hover:shadow-sm transition-shadow">
+            <div 
+              tabindex="0"
+              role="button"
+              (click)="openEditModal(user)"
+              (keyup.enter)="openEditModal(user)"
+              class="group relative flex items-center gap-4 p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 hover:border-indigo-500 dark:hover:border-indigo-500/60 hover:shadow-md transition-all cursor-pointer">
               <img [src]="user.user_metadata?.avatar_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150'" 
-                   class="w-12 h-12 rounded-full object-cover border border-slate-200 dark:border-slate-700"
+                   referrerpolicy="no-referrer"
+                   class="w-12 h-12 rounded-full object-cover border border-slate-200 dark:border-slate-700 shrink-0"
                    alt="Avatar">
               <div class="flex-1 min-w-0">
-                <h4 class="text-sm font-bold text-slate-900 dark:text-white truncate">{{ user.user_metadata?.display_name || 'Collaborateur' }}</h4>
+                <div class="flex items-center justify-between gap-1">
+                  <h4 class="text-sm font-bold text-slate-900 dark:text-white truncate group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                    {{ user.user_metadata?.display_name || 'Collaborateur' }}
+                  </h4>
+                  <span class="opacity-0 group-hover:opacity-100 transition-opacity text-[10px] font-semibold px-2 py-0.5 rounded bg-indigo-50 text-indigo-600 dark:bg-indigo-950/60 dark:text-indigo-300">
+                    ✏️ Modifier
+                  </span>
+                </div>
                 <p class="text-xs text-slate-500 dark:text-slate-400 truncate">{{ user.email }}</p>
                 <div class="mt-1 flex items-center gap-2">
                   <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border"
@@ -76,11 +89,11 @@
                   </span>
                   @if (user.app_metadata?.assignedSiteNames && user.app_metadata!.assignedSiteNames!.length > 0) {
                     <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border bg-slate-50 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700">
-                      {{ user.app_metadata?.assignedSiteNames?.join(', ') }}
+                      📍 {{ user.app_metadata?.assignedSiteNames?.join(', ') }}
                     </span>
                   } @else if (user.app_metadata?.assignedSiteName) {
                     <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border bg-slate-50 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700">
-                      {{ user.app_metadata?.assignedSiteName }}
+                      📍 {{ user.app_metadata?.assignedSiteName }}
                     </span>
                   }
                 </div>
@@ -273,6 +286,194 @@
               }
             </button>
           </div>
+        </form>
+      </div>
+    </div>
+  }
+
+  <!-- MODAL DE MODIFICATION DU COLLABORATEUR -->
+  @if (isEditModalOpen()) {
+    <div class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+      <div 
+        tabindex="0"
+        role="region"
+        aria-label="Modal de modification utilisateur"
+        class="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden transform transition-all"
+        (click)="$event.stopPropagation()"
+        (keyup.enter)="$event.stopPropagation()">
+        
+        <!-- Modal Header -->
+        <div class="px-6 py-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-950/50">
+          <div class="flex items-center gap-3">
+            <span class="p-2 rounded-xl bg-indigo-100 text-indigo-600 dark:bg-indigo-900/50 dark:text-indigo-400">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+            </span>
+            <div>
+              <h2 class="text-lg font-bold text-slate-900 dark:text-white">Modifier le Collaborateur</h2>
+              <p class="text-xs text-slate-500 dark:text-slate-400">Mettre à jour le profil et les permissions d'accès</p>
+            </div>
+          </div>
+
+          <button 
+            (click)="closeEditModal()" 
+            class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1.5 rounded-lg hover:bg-slate-200/50 dark:hover:bg-slate-800 transition-colors">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <!-- Modal Body Form -->
+        <form [formGroup]="editForm" (ngSubmit)="saveUser()" class="p-6 space-y-5">
+          
+          <!-- Success Message -->
+          @if (editSuccessMessage()) {
+            <div class="p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 text-sm flex items-center gap-2">
+              <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+              </svg>
+              <span>{{ editSuccessMessage() }}</span>
+            </div>
+          }
+
+          <!-- Error Message -->
+          @if (editErrorMessage()) {
+            <div class="p-3.5 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 text-sm flex items-center gap-2">
+              <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span>{{ editErrorMessage() }}</span>
+            </div>
+          }
+
+          <!-- Display Name -->
+          <div>
+            <label for="edit-displayName" class="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
+              Nom Complet *
+            </label>
+            <input 
+              id="edit-displayName"
+              type="text"
+              formControlName="displayName"
+              placeholder="Ex: Paul Martin"
+              class="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50 text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
+            />
+            @if (editForm.get('displayName')?.touched && editForm.get('displayName')?.invalid) {
+              <p class="mt-1 text-xs text-red-500">Le nom complet est obligatoire.</p>
+            }
+          </div>
+
+          <!-- Email -->
+          <div>
+            <label for="edit-email" class="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
+              Adresse E-mail *
+            </label>
+            <input 
+              id="edit-email"
+              type="email"
+              formControlName="email"
+              placeholder="nom@domaine.com"
+              class="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50 text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
+            />
+            @if (editForm.get('email')?.touched && editForm.get('email')?.invalid) {
+              <p class="mt-1 text-xs text-red-500">Veuillez renseigner une adresse email valide.</p>
+            }
+          </div>
+
+          <!-- Role -->
+          <div>
+            <span id="role-edit-group-label" class="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
+              Rôle Utilisateur *
+            </span>
+            <div class="grid grid-cols-3 gap-2" role="group" aria-labelledby="role-edit-group-label">
+              <label 
+                [class.border-indigo-500]="editForm.get('role')?.value === 'user'"
+                [class.bg-indigo-50\/40]="editForm.get('role')?.value === 'user'"
+                class="flex flex-col items-center justify-center p-3 rounded-xl border border-slate-200 dark:border-slate-800 cursor-pointer text-center hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all">
+                <input type="radio" formControlName="role" value="user" class="sr-only" />
+                <span class="text-xs font-semibold text-slate-900 dark:text-white">Utilisateur</span>
+                <span class="text-[10px] text-slate-500 mt-0.5">Saisie directe</span>
+              </label>
+
+              <label 
+                [class.border-indigo-500]="editForm.get('role')?.value === 'manager'"
+                [class.bg-indigo-50\/40]="editForm.get('role')?.value === 'manager'"
+                class="flex flex-col items-center justify-center p-3 rounded-xl border border-slate-200 dark:border-slate-800 cursor-pointer text-center hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all">
+                <input type="radio" formControlName="role" value="manager" class="sr-only" />
+                <span class="text-xs font-semibold text-slate-900 dark:text-white">Manager</span>
+                <span class="text-[10px] text-slate-500 mt-0.5">Validation</span>
+              </label>
+
+              <label 
+                [class.border-indigo-500]="editForm.get('role')?.value === 'admin'"
+                [class.bg-indigo-50\/40]="editForm.get('role')?.value === 'admin'"
+                class="flex flex-col items-center justify-center p-3 rounded-xl border border-slate-200 dark:border-slate-800 cursor-pointer text-center hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all">
+                <input type="radio" formControlName="role" value="admin" class="sr-only" />
+                <span class="text-xs font-semibold text-slate-900 dark:text-white">Admin</span>
+                <span class="text-[10px] text-slate-500 mt-0.5">Accès total</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Assigned Sites -->
+          <div>
+            <span id="sites-edit-group-label" class="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
+              Sites Portuaires Attribués
+            </span>
+            <div class="flex flex-wrap gap-2" role="group" aria-labelledby="sites-edit-group-label">
+              @for (site of sites; track site) {
+                <button
+                  type="button"
+                  (click)="toggleEditSite(site)"
+                  [ngClass]="editSelectedSites().includes(site) 
+                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm' 
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700'"
+                  class="px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all">
+                  📍 {{ site }}
+                </button>
+              }
+            </div>
+            <p class="mt-1 text-[11px] text-slate-400">Sélectionnez un ou plusieurs sites attribués à cet utilisateur.</p>
+          </div>
+
+          <!-- Avatar URL -->
+          <div>
+            <label for="edit-avatarUrl" class="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
+              URL de la photo de profil (optionnel)
+            </label>
+            <input 
+              id="edit-avatarUrl"
+              type="text"
+              formControlName="avatarUrl"
+              placeholder="https://..."
+              class="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50 text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
+            />
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="pt-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-end gap-3">
+            <button 
+              type="button"
+              (click)="closeEditModal()"
+              [disabled]="isSaving()"
+              class="px-4 py-2.5 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 text-sm font-medium transition-colors disabled:opacity-50">
+              Annuler
+            </button>
+            <button 
+              type="submit"
+              [disabled]="isSaving() || editForm.invalid"
+              class="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium shadow-md shadow-indigo-500/20 transition-all flex items-center gap-2 disabled:opacity-50">
+              @if (isSaving()) {
+                <div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                Enregistrement...
+              } @else {
+                Enregistrer les modifications
+              }
+            </button>
+          </div>
+
         </form>
       </div>
     </div>

@@ -52,7 +52,7 @@ export const routes: Routes = [
         component: RegisterComponent,
         canActivate: [roleGuard],
         data: { roles: ['admin'] },
-        title: 'GAP APP - Créer un collaborateur'
+        title: 'GAP APP - Collaborateurs'
       },
       {
         path: '',
