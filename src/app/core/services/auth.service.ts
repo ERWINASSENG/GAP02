@@ -68,9 +68,35 @@ export class AuthService {
       // exactement comme le vérifient déjà la RLS et server.ts.
       role: appMetadata['role'] || 'user',
       avatarUrl: metadata['avatar_url'] || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150',
-      assignedSiteId: appMetadata['assignedSiteId'] || undefined,
-      assignedSiteName: appMetadata['assignedSiteName'] || undefined,
-      assignedSiteNames: appMetadata['assignedSiteNames'] || (appMetadata['assignedSiteName'] ? [appMetadata['assignedSiteName']] : undefined)
+      assignedSiteId: appMetadata['assignedSiteId'] || metadata['assignedSiteId'] || undefined,
+      assignedSiteName: appMetadata['assignedSiteName'] || metadata['assignedSiteName'] || undefined,
+      assignedSiteNames: (() => {
+        const list: string[] = [];
+        const processSource = (rawNames: unknown, rawSingle: unknown) => {
+          if (Array.isArray(rawNames) && rawNames.length > 0) {
+            rawNames.forEach((item: unknown) => {
+              if (typeof item === 'string') {
+                item.split(',').forEach(sub => {
+                  const t = sub.trim();
+                  if (t) list.push(t);
+                });
+              }
+            });
+          }
+          if (typeof rawSingle === 'string' && rawSingle.trim()) {
+            rawSingle.split(',').forEach((sub: string) => {
+              const t = sub.trim();
+              if (t) list.push(t);
+            });
+          }
+        };
+
+        processSource(appMetadata['assignedSiteNames'], appMetadata['assignedSiteName']);
+        processSource(metadata['assignedSiteNames'], metadata['assignedSiteName']);
+
+        const uniqueList = Array.from(new Set(list));
+        return uniqueList.length > 0 ? uniqueList : undefined;
+      })()
     };
     this.currentUserSignal.set(portUser);
   }

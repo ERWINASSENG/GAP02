@@ -54,10 +54,25 @@ app.post('/api/system/collaborators', async (req, res) => {
     }
 
     const { email, password, displayName, role, assignedSiteName, assignedSiteNames } = req.body;
-    const sitesList: string[] = Array.isArray(assignedSiteNames) 
-      ? assignedSiteNames.filter((s: unknown) => typeof s === 'string' && (s as string).trim().length > 0)
-      : (typeof assignedSiteName === 'string' && assignedSiteName.trim() ? [assignedSiteName.trim()] : []);
-    const primarySite = sitesList.length > 0 ? sitesList[0] : (typeof assignedSiteName === 'string' ? assignedSiteName.trim() : '');
+    const rawSitesInput: string[] = [];
+    if (Array.isArray(assignedSiteNames)) {
+      assignedSiteNames.forEach((s: unknown) => {
+        if (typeof s === 'string') {
+          s.split(',').forEach((sub: string) => {
+            const t = sub.trim();
+            if (t) rawSitesInput.push(t);
+          });
+        }
+      });
+    }
+    if (typeof assignedSiteName === 'string') {
+      assignedSiteName.split(',').forEach((sub: string) => {
+        const t = sub.trim();
+        if (t) rawSitesInput.push(t);
+      });
+    }
+    const sitesList = Array.from(new Set(rawSitesInput));
+    const primarySite = sitesList.length > 0 ? sitesList[0] : '';
 
     // Create the new user using the admin API
     const { data: createData, error } = await supabaseAdmin.auth.admin.createUser({
@@ -206,10 +221,25 @@ app.patch('/api/system/collaborators/:id', async (req, res) => {
       return;
     }
 
-    const sitesList: string[] = Array.isArray(assignedSiteNames)
-      ? assignedSiteNames.filter((s: unknown) => typeof s === 'string' && (s as string).trim().length > 0)
-      : (typeof assignedSiteName === 'string' && assignedSiteName.trim() ? [assignedSiteName.trim()] : []);
-    const primarySiteName = sitesList.length > 0 ? sitesList[0] : (typeof assignedSiteName === 'string' ? assignedSiteName.trim() : '');
+    const rawUpdateSitesInput: string[] = [];
+    if (Array.isArray(assignedSiteNames)) {
+      assignedSiteNames.forEach((s: unknown) => {
+        if (typeof s === 'string') {
+          s.split(',').forEach((sub: string) => {
+            const t = sub.trim();
+            if (t) rawUpdateSitesInput.push(t);
+          });
+        }
+      });
+    }
+    if (typeof assignedSiteName === 'string') {
+      assignedSiteName.split(',').forEach((sub: string) => {
+        const t = sub.trim();
+        if (t) rawUpdateSitesInput.push(t);
+      });
+    }
+    const sitesList = Array.from(new Set(rawUpdateSitesInput));
+    const primarySiteName = sitesList.length > 0 ? sitesList[0] : '';
 
     const { data: existingUserData, error: existingUserError } = await supabaseAdmin.auth.admin.getUserById(userId);
     if (existingUserError || !existingUserData.user) {
@@ -303,6 +333,184 @@ app.get('/api/system/operations', async (req, res) => {
   } catch (err: unknown) {
     const errMsg = err instanceof Error ? err.message : 'Internal Server Error';
     console.error('Error in GET /api/system/operations:', errMsg);
+    res.status(500).json({ error: errMsg });
+  }
+});
+
+// API: Récupérer toutes les semaines de travail (pour Contournement RLS)
+app.get('/api/cahier/weeks', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      res.status(401).json({ error: 'Non autorisé' });
+      return;
+    }
+    const token = authHeader.replace('Bearer ', '');
+
+    let supabaseUrl = process.env['SUPABASE_URL'];
+    if (!supabaseUrl || !supabaseUrl.startsWith('http')) {
+      supabaseUrl = 'https://jwpigzkxkbszxzngfepn.supabase.co';
+    }
+    const supabaseServiceRole = process.env['SUPABASE_SERVICE_ROLE_KEY'];
+    if (!supabaseServiceRole) {
+      res.status(500).json({ error: 'Configuration serveur incomplète.' });
+      return;
+    }
+
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRole, {
+      auth: { autoRefreshToken: false, persistSession: false }
+    });
+
+    const { data: authData, error: authError } = await supabaseAdmin.auth.getUser(token);
+    const user = authData?.user;
+    if (authError || !user) {
+      res.status(401).json({ error: 'Utilisateur non authentifié.' });
+      return;
+    }
+
+    const { data, error } = await supabaseAdmin
+      .from('cahier_weeks')
+      .select('*')
+      .order('start_date', { ascending: false });
+
+    if (error) {
+      res.status(400).json({ error: error.message });
+      return;
+    }
+
+    res.json({ success: true, weeks: data || [] });
+  } catch (err: unknown) {
+    const errMsg = err instanceof Error ? err.message : 'Internal Server Error';
+    res.status(500).json({ error: errMsg });
+  }
+});
+
+// API: Créer une semaine de travail (Contournement RLS si la politique Supabase rejette l'insertion directe)
+app.post('/api/cahier/weeks', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      res.status(401).json({ error: 'Non autorisé' });
+      return;
+    }
+    const token = authHeader.replace('Bearer ', '');
+
+    let supabaseUrl = process.env['SUPABASE_URL'];
+    if (!supabaseUrl || !supabaseUrl.startsWith('http')) {
+      supabaseUrl = 'https://jwpigzkxkbszxzngfepn.supabase.co';
+    }
+    const supabaseServiceRole = process.env['SUPABASE_SERVICE_ROLE_KEY'];
+    if (!supabaseServiceRole) {
+      res.status(500).json({ error: 'Configuration serveur incomplète.' });
+      return;
+    }
+
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRole, {
+      auth: { autoRefreshToken: false, persistSession: false }
+    });
+
+    const { data: authData, error: authError } = await supabaseAdmin.auth.getUser(token);
+    const user = authData?.user;
+    if (authError || !user) {
+      res.status(401).json({ error: 'Utilisateur non authentifié.' });
+      return;
+    }
+
+    const { id, site, start_date, end_date, is_closed, user_id } = req.body;
+    if (!site || !start_date || !end_date) {
+      res.status(400).json({ error: 'Champs obligatoires manquants (site, start_date, end_date).' });
+      return;
+    }
+
+    const cleanSite = (site as string).trim();
+    const weekPayload = {
+      id: id || crypto.randomUUID(),
+      site: cleanSite,
+      start_date,
+      end_date,
+      is_closed: !!is_closed,
+      user_id: user_id || user.id
+    };
+
+    const { data, error } = await supabaseAdmin
+      .from('cahier_weeks')
+      .insert([weekPayload])
+      .select()
+      .maybeSingle();
+
+    if (error) {
+      if (error.code === '23505') {
+        const { data: existing } = await supabaseAdmin
+          .from('cahier_weeks')
+          .select('*')
+          .eq('site', cleanSite)
+          .eq('start_date', start_date)
+          .eq('end_date', end_date)
+          .maybeSingle();
+        if (existing) {
+          res.json({ success: true, week: existing });
+          return;
+        }
+      }
+      res.status(400).json({ error: error.message, code: error.code });
+      return;
+    }
+
+    res.json({ success: true, week: data || weekPayload });
+  } catch (err: unknown) {
+    const errMsg = err instanceof Error ? err.message : 'Internal Server Error';
+    res.status(500).json({ error: errMsg });
+  }
+});
+
+// API: Modifier une semaine de travail (Contournement RLS)
+app.patch('/api/cahier/weeks/:id', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      res.status(401).json({ error: 'Non autorisé' });
+      return;
+    }
+    const token = authHeader.replace('Bearer ', '');
+
+    let supabaseUrl = process.env['SUPABASE_URL'];
+    if (!supabaseUrl || !supabaseUrl.startsWith('http')) {
+      supabaseUrl = 'https://jwpigzkxkbszxzngfepn.supabase.co';
+    }
+    const supabaseServiceRole = process.env['SUPABASE_SERVICE_ROLE_KEY'];
+    if (!supabaseServiceRole) {
+      res.status(500).json({ error: 'Configuration serveur incomplète.' });
+      return;
+    }
+
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRole, {
+      auth: { autoRefreshToken: false, persistSession: false }
+    });
+
+    const { data: authData, error: authError } = await supabaseAdmin.auth.getUser(token);
+    const user = authData?.user;
+    if (authError || !user) {
+      res.status(401).json({ error: 'Utilisateur non authentifié.' });
+      return;
+    }
+
+    const weekId = req.params.id;
+    const updates = req.body;
+
+    const { data, error } = await supabaseAdmin
+      .from('cahier_weeks')
+      .update(updates)
+      .eq('id', weekId)
+      .select();
+
+    if (error) {
+      res.status(400).json({ error: error.message, code: error.code });
+      return;
+    }
+
+    res.json({ success: true, week: data?.[0] });
+  } catch (err: unknown) {
+    const errMsg = err instanceof Error ? err.message : 'Internal Server Error';
     res.status(500).json({ error: errMsg });
   }
 });

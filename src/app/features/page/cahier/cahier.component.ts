@@ -57,19 +57,33 @@ export class CahierComponent implements OnInit {
       return ['SCMC', 'TUSCANI', 'AFISA', 'AUTRE'];
     }
 
+    const sites: string[] = [];
     if (user?.assignedSiteNames && user.assignedSiteNames.length > 0) {
-      return user.assignedSiteNames;
+      user.assignedSiteNames.forEach(s => {
+        if (typeof s === 'string') {
+          s.split(',').forEach(sub => {
+            const t = sub.trim();
+            if (t) sites.push(t);
+          });
+        }
+      });
     }
-
-    const assignedSite = user?.assignedSiteName?.trim();
-    return assignedSite ? [assignedSite] : [];
+    if (user?.assignedSiteName) {
+      user.assignedSiteName.split(',').forEach(sub => {
+        const t = sub.trim();
+        if (t) sites.push(t);
+      });
+    }
+    return Array.from(new Set(sites));
   });
 
   readonly activeWeeksBySite = computed(() => {
-    const weeks = this.cahierService.weeks();
+    // Touch signals to ensure reactivity upon weeks updates
+    this.cahierService.weeks();
+    this.cahierService.adminWeeks();
     const result: Record<string, WorkWeek> = {};
     this.visibleSites().forEach(site => {
-      const active = weeks.find(w => w.site === site && !w.is_closed);
+      const active = this.cahierService.getActiveWeek(site);
       if (active) {
         result[site] = active;
       }
@@ -85,32 +99,32 @@ export class CahierComponent implements OnInit {
 
   readonly visibleOperations = computed<Operation[]>(() => {
     const isAdmin = this.authService.currentUser()?.role === 'admin';
-    const visibleSites = this.visibleSites();
+    const normalizedSites = this.visibleSites().map(s => s.trim().toUpperCase());
 
     return this.cahierService.operations().filter(op => {
       if (!op) return false;
-      if (!isAdmin && visibleSites.length > 0 && !visibleSites.includes(op.site || '')) return false;
+      if (!isAdmin && normalizedSites.length > 0 && !normalizedSites.includes((op.site || '').trim().toUpperCase())) return false;
       return true;
     });
   });
 
   readonly visibleDrafts = computed(() => {
     const isAdmin = this.authService.currentUser()?.role === 'admin';
-    const visibleSites = this.visibleSites();
+    const normalizedSites = this.visibleSites().map(s => s.trim().toUpperCase());
 
     return this.cahierService.drafts().filter(draft => {
       if (!draft) return false;
-      if (!isAdmin && visibleSites.length > 0 && !visibleSites.includes(draft.site || '')) return false;
+      if (!isAdmin && normalizedSites.length > 0 && !normalizedSites.includes((draft.site || '').trim().toUpperCase())) return false;
       return true;
     });
   });
 
   readonly visibleMonthlySummaries = computed(() => {
     const isAdmin = this.authService.currentUser()?.role === 'admin';
-    const visibleSites = this.visibleSites();
+    const normalizedSites = this.visibleSites().map(s => s.trim().toUpperCase());
 
     return this.cahierService.monthlySummaries().filter(summary => {
-      if (!isAdmin && visibleSites.length > 0 && !visibleSites.includes(summary.site || '')) return false;
+      if (!isAdmin && normalizedSites.length > 0 && !normalizedSites.includes((summary.site || '').trim().toUpperCase())) return false;
       return true;
     });
   });
@@ -424,7 +438,13 @@ export class CahierComponent implements OnInit {
   }
 
   addItemRow() {
-    const opDate = this.operationForm.controls.date.value || new Date().toISOString().split('T')[0];
+    let opDate = this.operationForm.controls.date.value || new Date().toISOString().split('T')[0];
+    if (this.itemsFormArray.length > 0) {
+      const lastRowDate = this.itemsFormArray.at(this.itemsFormArray.length - 1).get('date')?.value;
+      if (lastRowDate && typeof lastRowDate === 'string' && lastRowDate.trim() !== '') {
+        opDate = lastRowDate.trim();
+      }
+    }
     let defaultProduct = this.operationForm.controls.produit.value || '';
     if (this.operationForm.value.type === 'Reconditionnement' && this.itemsFormArray.length > 0) {
       defaultProduct = this.itemsFormArray.at(0).get('produit')?.value || '';
