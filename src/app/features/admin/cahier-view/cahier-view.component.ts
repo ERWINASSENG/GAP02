@@ -600,4 +600,58 @@ export class AdminCahierViewComponent {
       this.isReopening.set(false);
     }
   }
+
+  // --- Modification de la période d'une semaine ---
+  readonly editingWeekPeriod = signal<WorkWeek | null>(null);
+  readonly editingWeekStartDate = signal<string>('');
+  readonly isSavingWeekPeriod = signal<boolean>(false);
+  readonly weekPeriodError = signal<string | null>(null);
+
+  openEditWeekModal(week: WorkWeek, event?: Event): void {
+    if (event) event.stopPropagation();
+    this.editingWeekPeriod.set(week);
+    this.editingWeekStartDate.set(week.start_date);
+    this.weekPeriodError.set(null);
+  }
+
+  closeEditWeekModal(): void {
+    this.editingWeekPeriod.set(null);
+    this.weekPeriodError.set(null);
+  }
+
+  computedEndDateForEdit(): string {
+    const startStr = this.editingWeekStartDate();
+    if (!startStr) return '';
+    const parts = startStr.split('-').map(Number);
+    if (parts.length !== 3 || parts.some(Number.isNaN)) return startStr;
+    const [y, m, d] = parts;
+    const endDate = new Date(Date.UTC(y, m - 1, d + 6));
+    return endDate.toISOString().split('T')[0];
+  }
+
+  async saveWeekPeriod(): Promise<void> {
+    const week = this.editingWeekPeriod();
+    const newStartDate = this.editingWeekStartDate();
+    if (!week || !newStartDate) return;
+
+    const newEndDate = this.computedEndDateForEdit();
+
+    this.isSavingWeekPeriod.set(true);
+    this.weekPeriodError.set(null);
+
+    try {
+      const res = await this.cahierService.adminUpdateWeek(week.id, newStartDate, newEndDate);
+      if (res.success) {
+        this.closeEditWeekModal();
+      } else {
+        this.weekPeriodError.set(res.error || 'Erreur lors de la modification de la période.');
+      }
+    } catch (err) {
+      this.weekPeriodError.set(
+        err instanceof Error ? err.message : 'Une erreur inattendue est survenue.'
+      );
+    } finally {
+      this.isSavingWeekPeriod.set(false);
+    }
+  }
 }

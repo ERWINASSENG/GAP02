@@ -41,6 +41,9 @@ export class CahierService {
 
   private getUserAssignedSites(user: PortUser | null): string[] {
     if (!user) return [];
+    if (user.role === 'admin') {
+      return ['SCMC', 'TUSCANI', 'AFISA', 'AUTRE'];
+    }
     if (user.assignedSiteNames && user.assignedSiteNames.length > 0) {
       return user.assignedSiteNames;
     }
@@ -221,8 +224,12 @@ export class CahierService {
     };
 
     const previousWeeks = this._weeks();
+    const previousAdminWeeks = this._adminWeeks();
     const updated = [newWeek, ...previousWeeks];
     this._weeks.set(updated);
+    if (previousAdminWeeks.length > 0) {
+      this._adminWeeks.set([newWeek, ...previousAdminWeeks]);
+    }
 
     try {
       const { error } = await this.supabaseService.client
@@ -243,6 +250,7 @@ export class CahierService {
       const isUniqueViolation = typeof err === 'object' && err !== null && 'code' in err && (err as { code?: string }).code === '23505';
       if (isUniqueViolation) {
         this._weeks.set(previousWeeks);
+        this._adminWeeks.set(previousAdminWeeks);
         const { data: existing, error: fetchError } = await this.supabaseService.client
           .from('cahier_weeks')
           .select('*')
@@ -263,6 +271,9 @@ export class CahierService {
             user_id: existing['user_id'] as string
           };
           this._weeks.set([recoveredWeek, ...previousWeeks]);
+          if (previousAdminWeeks.length > 0) {
+            this._adminWeeks.set([recoveredWeek, ...previousAdminWeeks]);
+          }
           return recoveredWeek;
         }
       }
@@ -270,6 +281,7 @@ export class CahierService {
       console.error('Error creating week in Supabase:', err);
       // Rollback
       this._weeks.set(previousWeeks);
+      this._adminWeeks.set(previousAdminWeeks);
       const message = (typeof err === 'object' && err !== null && 'message' in err)
         ? String((err as { message?: unknown }).message)
         : 'Erreur lors de la création de la semaine de travail.';
@@ -330,7 +342,14 @@ export class CahierService {
     const closedAt = new Date().toISOString();
 
     const previousWeeks = this._weeks();
+    const previousAdminWeeks = this._adminWeeks();
     const updated = previousWeeks.map(w => {
+      if (w.id === weekId) {
+        return { ...w, is_closed: true, closed_at: closedAt };
+      }
+      return w;
+    });
+    const updatedAdmin = previousAdminWeeks.map(w => {
       if (w.id === weekId) {
         return { ...w, is_closed: true, closed_at: closedAt };
       }
@@ -338,6 +357,7 @@ export class CahierService {
     });
 
     this._weeks.set(updated);
+    this._adminWeeks.set(updatedAdmin);
 
     try {
       const { error } = await this.supabaseService.client
@@ -350,6 +370,7 @@ export class CahierService {
       console.error('Error closing week:', err);
       // Rollback
       this._weeks.set(previousWeeks);
+      this._adminWeeks.set(previousAdminWeeks);
       return false;
     }
 
@@ -358,7 +379,7 @@ export class CahierService {
 
   /**
    * Modifie la date de début et de fin d'une semaine de travail (exposé côté
-   * UI uniquement dans la vue admin). Agit sur _adminWeeks.
+   * UI uniquement dans la vue admin). Agit sur _adminWeeks et _weeks.
    */
   async adminUpdateWeek(weekId: string, startDate: string, endDate: string): Promise<{ success: boolean; error?: string }> {
     if (endDate < startDate) {
@@ -366,10 +387,17 @@ export class CahierService {
     }
 
     const previousAdminWeeks = this._adminWeeks();
-    const updatedOptimistic = previousAdminWeeks.map(w =>
+    const previousWeeks = this._weeks();
+
+    const updatedAdminOptimistic = previousAdminWeeks.map(w =>
       w.id === weekId ? { ...w, start_date: startDate, end_date: endDate } : w
     );
-    this._adminWeeks.set(updatedOptimistic);
+    const updatedUserOptimistic = previousWeeks.map(w =>
+      w.id === weekId ? { ...w, start_date: startDate, end_date: endDate } : w
+    );
+
+    this._adminWeeks.set(updatedAdminOptimistic);
+    this._weeks.set(updatedUserOptimistic);
 
     try {
       const { error } = await this.supabaseService.client
@@ -381,6 +409,7 @@ export class CahierService {
     } catch (err) {
       console.error('Error updating week (admin):', err);
       this._adminWeeks.set(previousAdminWeeks);
+      this._weeks.set(previousWeeks);
       const isUniqueViolation = typeof err === 'object' && err !== null && 'code' in err && (err as { code?: string }).code === '23505';
       const message = isUniqueViolation
         ? 'Une autre semaine existe déjà pour ce site avec ces mêmes dates.'
