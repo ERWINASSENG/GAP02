@@ -20,6 +20,8 @@ interface OperationFormValue {
   sonLevel?: string | null;
   frequence?: string | null;
   details?: string | null;
+  is_rattrapage?: boolean;
+  real_date?: string;
   items?: Partial<OperationItem>[];
 }
 
@@ -57,15 +59,33 @@ export class CahierComponent implements OnInit {
       return ['SCMC', 'TUSCANI', 'AFISA', 'AUTRE'];
     }
 
-    const assignedSite = user?.assignedSiteName?.trim();
-    return assignedSite ? [assignedSite] : [];
+    const sites: string[] = [];
+    if (user?.assignedSiteNames && user.assignedSiteNames.length > 0) {
+      user.assignedSiteNames.forEach(s => {
+        if (typeof s === 'string') {
+          s.split(',').forEach(sub => {
+            const t = sub.trim();
+            if (t) sites.push(t);
+          });
+        }
+      });
+    }
+    if (user?.assignedSiteName) {
+      user.assignedSiteName.split(',').forEach(sub => {
+        const t = sub.trim();
+        if (t) sites.push(t);
+      });
+    }
+    return Array.from(new Set(sites));
   });
 
   readonly activeWeeksBySite = computed(() => {
-    const weeks = this.cahierService.weeks();
+    // Touch signals to ensure reactivity upon weeks updates
+    this.cahierService.weeks();
+    this.cahierService.adminWeeks();
     const result: Record<string, WorkWeek> = {};
     this.visibleSites().forEach(site => {
-      const active = weeks.find(w => w.site === site && !w.is_closed);
+      const active = this.cahierService.getActiveWeek(site);
       if (active) {
         result[site] = active;
       }
@@ -81,32 +101,32 @@ export class CahierComponent implements OnInit {
 
   readonly visibleOperations = computed<Operation[]>(() => {
     const isAdmin = this.authService.currentUser()?.role === 'admin';
-    const visibleSites = this.visibleSites();
+    const normalizedSites = this.visibleSites().map(s => s.trim().toUpperCase());
 
     return this.cahierService.operations().filter(op => {
       if (!op) return false;
-      if (!isAdmin && visibleSites.length > 0 && !visibleSites.includes(op.site || '')) return false;
+      if (!isAdmin && normalizedSites.length > 0 && !normalizedSites.includes((op.site || '').trim().toUpperCase())) return false;
       return true;
     });
   });
 
   readonly visibleDrafts = computed(() => {
     const isAdmin = this.authService.currentUser()?.role === 'admin';
-    const visibleSites = this.visibleSites();
+    const normalizedSites = this.visibleSites().map(s => s.trim().toUpperCase());
 
     return this.cahierService.drafts().filter(draft => {
       if (!draft) return false;
-      if (!isAdmin && visibleSites.length > 0 && !visibleSites.includes(draft.site || '')) return false;
+      if (!isAdmin && normalizedSites.length > 0 && !normalizedSites.includes((draft.site || '').trim().toUpperCase())) return false;
       return true;
     });
   });
 
   readonly visibleMonthlySummaries = computed(() => {
     const isAdmin = this.authService.currentUser()?.role === 'admin';
-    const visibleSites = this.visibleSites();
+    const normalizedSites = this.visibleSites().map(s => s.trim().toUpperCase());
 
     return this.cahierService.monthlySummaries().filter(summary => {
-      if (!isAdmin && visibleSites.length > 0 && !visibleSites.includes(summary.site || '')) return false;
+      if (!isAdmin && normalizedSites.length > 0 && !normalizedSites.includes((summary.site || '').trim().toUpperCase())) return false;
       return true;
     });
   });
@@ -235,6 +255,8 @@ export class CahierComponent implements OnInit {
     sonLevel: new FormControl<string>('Moyen'),
     frequence: new FormControl<string>('Basse'),
     details: new FormControl<string>(''),
+    is_rattrapage: new FormControl<boolean>(false, { nonNullable: true }),
+    real_date: new FormControl<string>(''),
     items: new FormArray<FormGroup>([])
   });
 
@@ -245,7 +267,7 @@ export class CahierComponent implements OnInit {
     return this.operationForm.get('items') as FormArray;
   }
 
-  createItemFormGroup(date = '', dn = '', produit = '', qte: number | null = null, pu: number | null = null, montant: number | null = null): FormGroup {
+  createItemFormGroup(date = '', dn = '', produit = '', qte: number | null = null, pu: number | null = null, montant: number | null = null, matricule = ''): FormGroup {
     const currentSite = this.operationForm.controls.site.value || '';
     const currentType = this.operationForm.controls.type.value || '';
     const isPrefixRequired = currentType === 'Chargement' && (currentSite === 'AFISA' || currentSite === 'SCMC');
@@ -325,6 +347,7 @@ export class CahierComponent implements OnInit {
       dnPrefix: new FormControl<string>(prefix, { validators: (isDnRequired && currentType === 'Chargement') ? [Validators.required] : [], nonNullable: true }),
       dnNumber: new FormControl<string>(num, { validators: isDnRequired ? [Validators.required] : [], nonNullable: true }),
       dn: new FormControl<string>(dn || (isPrefixRequired ? `${prefix} ${num}`.toUpperCase().trim() : num.toUpperCase().trim()), { validators: isDnRequired ? [Validators.required] : [], nonNullable: true }),
+      matricule: new FormControl<string>(matricule, { nonNullable: true }),
       produit: new FormControl<string>(produit, { validators: isProduitRequired ? [Validators.required] : [], nonNullable: true }),
       qte: new FormControl<number | null>(qte, { validators: [Validators.required, Validators.min(0)] }),
       pu: new FormControl<number | null>(pu, { validators: [Validators.required, Validators.min(0)] }),
@@ -420,7 +443,13 @@ export class CahierComponent implements OnInit {
   }
 
   addItemRow() {
-    const opDate = this.operationForm.controls.date.value || new Date().toISOString().split('T')[0];
+    let opDate = this.operationForm.controls.date.value || new Date().toISOString().split('T')[0];
+    if (this.itemsFormArray.length > 0) {
+      const lastRowDate = this.itemsFormArray.at(this.itemsFormArray.length - 1).get('date')?.value;
+      if (lastRowDate && typeof lastRowDate === 'string' && lastRowDate.trim() !== '') {
+        opDate = lastRowDate.trim();
+      }
+    }
     let defaultProduct = this.operationForm.controls.produit.value || '';
     if (this.operationForm.value.type === 'Reconditionnement' && this.itemsFormArray.length > 0) {
       defaultProduct = this.itemsFormArray.at(0).get('produit')?.value || '';
@@ -489,6 +518,7 @@ export class CahierComponent implements OnInit {
       items: (val.items as Partial<OperationItem>[] || []).map(item => ({
         date: item.date || '',
         dn: item.dn || '',
+        matricule: item.matricule || '',
         produit: item.produit || '',
         qte: Number(item.qte) || 0,
         pu: Number(item.pu) || 0,
@@ -514,25 +544,25 @@ export class CahierComponent implements OnInit {
   readonly tableColspan = computed<number>(() => {
     const val = this.formValue();
     if (val.type === 'Chargement des wagons' || val.type === 'Chargement wagons' || val.type === 'Chargement Wagon Blé' || val.type === 'Chargement Wagon Farine') {
-      return 6;
+      return 7;
     }
     if (val.type === 'Chargement Camions') {
-      return 6;
+      return 7;
     }
     const isDnActive = val.type === 'Chargement' && (val.site === 'AFISA' || val.site === 'SCMC');
-    return isDnActive ? 7 : 6;
+    return isDnActive ? 8 : 7;
   });
 
   readonly totalColspan = computed<number>(() => {
     const val = this.formValue();
     if (val.type === 'Chargement des wagons' || val.type === 'Chargement wagons' || val.type === 'Chargement Wagon Blé' || val.type === 'Chargement Wagon Farine') {
-      return 4;
+      return 5;
     }
     if (val.type === 'Chargement Camions') {
-      return 4;
+      return 5;
     }
     const isDnActive = val.type === 'Chargement' && (val.site === 'AFISA' || val.site === 'SCMC');
-    return isDnActive ? 5 : 4;
+    return isDnActive ? 6 : 5;
   });
 
   getOperationTotal(op: Operation): number {
@@ -562,7 +592,9 @@ export class CahierComponent implements OnInit {
       destination: '',
       sonLevel: 'Moyen',
       frequence: 'Basse',
-      details: ''
+      details: '',
+      is_rattrapage: false,
+      real_date: ''
     });
     this.currentStep.set(1);
     this.isCreationPageOpen.set(true);
@@ -584,7 +616,9 @@ export class CahierComponent implements OnInit {
       destination: draft.destination || '',
       sonLevel: draft.sonLevel || 'Moyen',
       frequence: draft.frequence || 'Basse',
-      details: draft.details || ''
+      details: draft.details || '',
+      is_rattrapage: draft.is_rattrapage || false,
+      real_date: draft.real_date || ''
     });
 
     if (draft.items && draft.items.length > 0) {
@@ -595,7 +629,8 @@ export class CahierComponent implements OnInit {
           item.produit,
           item.qte,
           item.pu,
-          item.montant
+          item.montant,
+          item.matricule
         ));
       });
     }
@@ -604,8 +639,28 @@ export class CahierComponent implements OnInit {
     this.isCreationPageOpen.set(true);
   }
 
+  isOperationWeekClosed(op: Operation): boolean {
+    if (!op) return false;
+    const weeks = this.cahierService.weeks();
+    if (op.week_id) {
+      const week = weeks.find(w => w.id === op.week_id);
+      if (week?.is_closed) return true;
+    }
+    if (op.site && op.date) {
+      const closed = weeks.find(w => w.site === op.site && w.is_closed && op.date >= w.start_date && op.date <= w.end_date);
+      if (closed) return true;
+    }
+    return false;
+  }
+
   // Opens form from an existing registered operation
   editOperation(op: Operation) {
+    if (this.isOperationWeekClosed(op)) {
+      this.validationBlockTitle.set('Modification impossible');
+      this.validationBlockMessage.set('Cette semaine est clôturée. L\'opération ne peut pas être modifiée.');
+      return;
+    }
+
     this.isEditingRegistered.set(true);
     this.itemsFormArray.clear();
     this.activeDraftId.set(op.id);
@@ -620,7 +675,9 @@ export class CahierComponent implements OnInit {
       destination: op.destination || '',
       sonLevel: op.sonLevel || 'Moyen',
       frequence: op.frequence || 'Basse',
-      details: op.details || ''
+      details: op.details || '',
+      is_rattrapage: op.is_rattrapage || false,
+      real_date: op.real_date || ''
     });
 
     if (op.items && op.items.length > 0) {
@@ -631,7 +688,8 @@ export class CahierComponent implements OnInit {
           item.produit,
           item.qte,
           item.pu,
-          item.montant
+          item.montant,
+          item.matricule
         ));
       });
     } else if (op.quantite !== undefined || op.destination || op.produit) {
@@ -692,6 +750,7 @@ export class CahierComponent implements OnInit {
         items: rawItems.map(item => ({
           date: item.date || val.date || '',
           dn: item.dn || `${item.dnPrefix || 'DN'} ${item.dnNumber || ''}`.toUpperCase().trim(),
+          matricule: (item as any).matricule || '',
           produit: item.produit || '',
           qte: item.qte !== null ? Number(item.qte) : 0,
           pu: item.pu !== null ? Number(item.pu) : 0,
@@ -880,7 +939,10 @@ export class CahierComponent implements OnInit {
 
     const operationDate = dateCandidates[0] || (val.date || '').toString().trim();
     const validation = operationDate
-      ? this.cahierService.validateOperationDate(val.site, operationDate)
+      ? this.cahierService.validateOperationDate(val.site, operationDate, {
+          isRattrapage: val.is_rattrapage,
+          realDate: val.real_date || undefined
+        })
       : { allowed: false, reason: 'Veuillez saisir une date d’opération.' };
 
     if (!validation.allowed) {
@@ -908,9 +970,12 @@ export class CahierComponent implements OnInit {
         date: operationDate,
         heure: val.heure,
         details: val.details || undefined,
+        is_rattrapage: val.is_rattrapage || false,
+        real_date: val.is_rattrapage ? (val.real_date || undefined) : undefined,
         items: rawItems.map(item => ({
           date: item.date || '',
           dn: item.dn || `${item.dnPrefix || 'DN'} ${item.dnNumber || ''}`.toUpperCase().trim(),
+          matricule: (item as any).matricule || '',
           produit: item.produit || '',
           qte: Number(item.qte) || 0,
           pu: Number(item.pu) || 0,
@@ -932,6 +997,12 @@ export class CahierComponent implements OnInit {
 
   // Deletes an operation with local confirmation
   deleteOp(id: string) {
+    const op = this.cahierService.operations().find(o => o.id === id);
+    if (op && this.isOperationWeekClosed(op)) {
+      this.validationBlockTitle.set('Suppression impossible');
+      this.validationBlockMessage.set('Cette semaine est clôturée. L\'opération ne peut pas être supprimée.');
+      return;
+    }
     this.operationToDelete.set(id);
   }
 

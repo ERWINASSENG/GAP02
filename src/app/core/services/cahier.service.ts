@@ -3,6 +3,7 @@ import { isPlatformBrowser } from '@angular/common';
 import { Operation, MonthlySummary, WorkWeek } from '../../shared/models/cahier.model';
 import { SupabaseService } from './supabase.service';
 import { AuthService } from './auth.service';
+import { PortUser } from '../../shared/models/auth.model';
 
 @Injectable({
   providedIn: 'root'
@@ -38,41 +39,184 @@ export class CahierService {
     });
   }
 
-  /**
-   * Loads initial weeks from Supabase
-   */
-  private async loadInitialWeeks(userId?: string) {
-    const user = this.authService.currentUser();
-    if (!userId || !user?.assignedSiteName) {
-      this._weeks.set([]);
-      return;
+  private getUserAssignedSites(user: PortUser | null): string[] {
+    if (!user) return [];
+    if (user.role === 'admin') {
+      return ['SCMC', 'TUSCANI', 'AFISA', 'AUTRE'];
     }
+    const sites: string[] = [];
+    if (user.assignedSiteNames && user.assignedSiteNames.length > 0) {
+      user.assignedSiteNames.forEach(s => {
+        if (typeof s === 'string') {
+          s.split(',').forEach(sub => {
+            const t = sub.trim();
+            if (t) sites.push(t);
+          });
+        }
+      });
+    }
+    if (user.assignedSiteName) {
+      user.assignedSiteName.split(',').forEach(sub => {
+        const t = sub.trim();
+        if (t) sites.push(t);
+      });
+    }
+    return Array.from(new Set(sites));
+  }
 
+  private async getAuthToken(): Promise<string | null> {
+    const sessionRes = await this.supabaseService.client.auth.getSession();
+    return sessionRes.data.session?.access_token || null;
+  }
+
+  private async createWeekViaApi(payload: WorkWeek): Promise<WorkWeek | null> {
     try {
-      const { data, error } = await this.supabaseService.client
-        .from('cahier_weeks')
-        .select('*')
-        .eq('site', user.assignedSiteName)
-        .order('start_date', { ascending: false });
+      const token = await this.getAuthToken();
+      if (!token) return null;
 
-      if (!error && data) {
-        const mappedWeeks: WorkWeek[] = data.map((w: Record<string, unknown>) => {
+      const response = await fetch('/api/cahier/weeks', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error || 'Erreur lors de la création de la semaine via API.');
+      }
+
+      const resJson = await response.json();
+      if (resJson.success && resJson.week) {
+        return {
+          id: resJson.week.id,
+          site: (resJson.week.site || '').trim(),
+          start_date: resJson.week.start_date,
+          end_date: resJson.week.end_date,
+          is_closed: !!resJson.week.is_closed,
+          closed_at: resJson.week.closed_at,
+          created_at: resJson.week.created_at,
+          user_id: resJson.week.user_id
+        };
+      }
+      return null;
+    } catch (e) {
+      console.warn('API fallback error creating week:', e);
+      throw e;
+    }
+  }
+
+  private async updateWeekViaApi(weekId: string, updates: Record<string, unknown>): Promise<boolean> {
+    try {
+      const token = await this.getAuthToken();
+      if (!token) return false;
+
+      const response = await fetch(`/api/cahier/weeks/${weekId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(updates)
+      });
+
+      return response.ok;
+    } catch (e) {
+      console.warn('API fallback error updating week:', e);
+      return false;
+    }
+  }
+
+  private async fetchWeeksViaApi(): Promise<WorkWeek[]> {
+    try {
+      const token = await this.getAuthToken();
+      if (!token) return [];
+
+      const response = await fetch('/api/cahier/weeks', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) return [];
+
+      const resJson = await response.json();
+      if (resJson.success && Array.isArray(resJson.weeks)) {
+        return resJson.weeks.map((w: Record<string, unknown>) => {
           const startDate = w['start_date'] as string;
           return {
             id: w['id'] as string,
-            site: w['site'] as string,
+            site: ((w['site'] as string) || '').trim(),
             start_date: startDate,
             end_date: startDate ? this.computeWeekEndDate(startDate) : (w['end_date'] as string),
-            is_closed: w['is_closed'] as boolean,
+            is_closed: !!w['is_closed'],
             closed_at: w['closed_at'] as string,
             created_at: w['created_at'] as string,
             user_id: w['user_id'] as string
           };
         });
+      }
+      return [];
+    } catch (e) {
+      console.warn('API fallback error fetching weeks:', e);
+      return [];
+    }
+  }
+
+  /**
+   * Loads initial weeks from Supabase or Server API
+   */
+  private async loadInitialWeeks(userId?: string) {
+    const user = this.authService.currentUser();
+    const userSites = this.getUserAssignedSites(user);
+    if (!userId || userSites.length === 0) {
+      this._weeks.set([]);
+      return;
+    }
+
+    const userNormSites = userSites.map(s => s.trim().toUpperCase());
+
+    // 1. D'abord essayer l'API serveur (service role) qui bypasse les RLS multi-sites et les problèmes de majuscules/minuscules
+    try {
+      const apiWeeks = await this.fetchWeeksViaApi();
+      if (apiWeeks.length > 0) {
+        const filtered = apiWeeks.filter(w => userNormSites.includes((w.site || '').trim().toUpperCase()));
+        this._weeks.set(filtered);
+        void this.syncWeekEndDates(filtered);
+        return;
+      }
+    } catch (e) {
+      console.warn('Erreur chargement semaines via API, tentative directe Supabase...', e);
+    }
+
+    // 2. Repli direct Supabase si l'API ne renvoie pas de données
+    try {
+      const { data, error } = await this.supabaseService.client
+        .from('cahier_weeks')
+        .select('*')
+        .order('start_date', { ascending: false });
+
+      if (!error && data) {
+        const mappedWeeks: WorkWeek[] = data
+          .map((w: Record<string, unknown>) => {
+            const startDate = w['start_date'] as string;
+            return {
+              id: w['id'] as string,
+              site: ((w['site'] as string) || '').trim(),
+              start_date: startDate,
+              end_date: startDate ? this.computeWeekEndDate(startDate) : (w['end_date'] as string),
+              is_closed: !!w['is_closed'],
+              closed_at: w['closed_at'] as string,
+              created_at: w['created_at'] as string,
+              user_id: w['user_id'] as string
+            };
+          })
+          .filter(w => userNormSites.includes(w.site.toUpperCase()));
+
         this._weeks.set(mappedWeeks);
         void this.syncWeekEndDates(mappedWeeks);
-      } else if (error) {
-        console.error('❌ Erreur Supabase (Fetch semaines):', error.message);
       }
     } catch (err) {
       console.error('❌ Erreur Réseau ou Supabase (semaines):', err);
@@ -94,6 +238,17 @@ export class CahierService {
     }
 
     try {
+      const apiWeeks = await this.fetchWeeksViaApi();
+      if (apiWeeks.length > 0) {
+        this._adminWeeks.set(apiWeeks);
+        void this.syncWeekEndDates(apiWeeks);
+        return;
+      }
+    } catch {
+      // repli
+    }
+
+    try {
       const { data, error } = await this.supabaseService.client
         .from('cahier_weeks')
         .select('*')
@@ -105,10 +260,10 @@ export class CahierService {
           const startDate = w['start_date'] as string;
           return {
             id: w['id'] as string,
-            site: w['site'] as string,
+            site: ((w['site'] as string) || '').trim(),
             start_date: startDate,
             end_date: startDate ? this.computeWeekEndDate(startDate) : (w['end_date'] as string),
-            is_closed: w['is_closed'] as boolean,
+            is_closed: !!w['is_closed'],
             closed_at: w['closed_at'] as string,
             created_at: w['created_at'] as string,
             user_id: w['user_id'] as string
@@ -116,11 +271,13 @@ export class CahierService {
         });
         this._adminWeeks.set(mappedWeeks);
         void this.syncWeekEndDates(mappedWeeks);
-      } else if (error) {
-        console.error('❌ Erreur Supabase (Fetch semaines admin):', error.message);
       }
-    } catch (err) {
-      console.error('❌ Erreur Réseau ou Supabase (semaines admin):', err);
+    } catch {
+      const apiWeeks = await this.fetchWeeksViaApi();
+      if (apiWeeks.length > 0) {
+        this._adminWeeks.set(apiWeeks);
+        void this.syncWeekEndDates(apiWeeks);
+      }
     }
   }
 
@@ -128,7 +285,13 @@ export class CahierService {
    * Gets the active (not closed) week for a specific site
    */
   getActiveWeek(site: string): WorkWeek | undefined {
-    return this._weeks().find(w => w.site === site && !w.is_closed);
+    if (!site) return undefined;
+    const target = site.trim().toUpperCase();
+    const user = this.authService.currentUser();
+    const weeksList = (user?.role === 'admin' && this._adminWeeks().length > 0)
+      ? this._adminWeeks()
+      : this._weeks();
+    return weeksList.find(w => (w.site || '').trim().toUpperCase() === target && !w.is_closed);
   }
 
   private computeWeekEndDate(startDateStr: string): string {
@@ -208,8 +371,12 @@ export class CahierService {
     };
 
     const previousWeeks = this._weeks();
+    const previousAdminWeeks = this._adminWeeks();
     const updated = [newWeek, ...previousWeeks];
     this._weeks.set(updated);
+    if (previousAdminWeeks.length > 0) {
+      this._adminWeeks.set([newWeek, ...previousAdminWeeks]);
+    }
 
     try {
       const { error } = await this.supabaseService.client
@@ -224,12 +391,32 @@ export class CahierService {
         }]);
       if (error) throw error;
     } catch (err) {
+      const errCode = typeof err === 'object' && err !== null && 'code' in err ? (err as { code?: string }).code : undefined;
+      
+      if (errCode === '42501') {
+        try {
+          const apiWeek = await this.createWeekViaApi(newWeek);
+          if (apiWeek) {
+            const currentWeeks = this._weeks().filter(w => w.id !== newWeek.id);
+            const currentAdminWeeks = this._adminWeeks().filter(w => w.id !== newWeek.id);
+            this._weeks.set([apiWeek, ...currentWeeks]);
+            if (previousAdminWeeks.length > 0) {
+              this._adminWeeks.set([apiWeek, ...currentAdminWeeks]);
+            }
+            return apiWeek;
+          }
+        } catch (apiErr) {
+          console.warn('API fallback error in createWeek:', apiErr);
+        }
+      }
+
       // Cas de course : un collègue du même site vient de créer la même semaine
       // (contrainte UNIQUE site/start_date/end_date) juste avant nous. On se
       // rattrape en récupérant la semaine existante plutôt que d'échouer.
-      const isUniqueViolation = typeof err === 'object' && err !== null && 'code' in err && (err as { code?: string }).code === '23505';
+      const isUniqueViolation = errCode === '23505';
       if (isUniqueViolation) {
         this._weeks.set(previousWeeks);
+        this._adminWeeks.set(previousAdminWeeks);
         const { data: existing, error: fetchError } = await this.supabaseService.client
           .from('cahier_weeks')
           .select('*')
@@ -250,6 +437,9 @@ export class CahierService {
             user_id: existing['user_id'] as string
           };
           this._weeks.set([recoveredWeek, ...previousWeeks]);
+          if (previousAdminWeeks.length > 0) {
+            this._adminWeeks.set([recoveredWeek, ...previousAdminWeeks]);
+          }
           return recoveredWeek;
         }
       }
@@ -257,6 +447,7 @@ export class CahierService {
       console.error('Error creating week in Supabase:', err);
       // Rollback
       this._weeks.set(previousWeeks);
+      this._adminWeeks.set(previousAdminWeeks);
       const message = (typeof err === 'object' && err !== null && 'message' in err)
         ? String((err as { message?: unknown }).message)
         : 'Erreur lors de la création de la semaine de travail.';
@@ -288,14 +479,20 @@ export class CahierService {
         .from('cahier_weeks')
         .update({ start_date: newStartDate, end_date: newEndDate })
         .eq('id', week.id);
-      if (error) throw error;
+      if (error) {
+        const ok = await this.updateWeekViaApi(week.id, { start_date: newStartDate, end_date: newEndDate });
+        if (!ok) throw error;
+      }
     } catch (err) {
-      console.error('Error shifting week start in Supabase:', err);
-      this._weeks.set(previousWeeks);
-      const message = (typeof err === 'object' && err !== null && 'message' in err)
-        ? String((err as { message?: unknown }).message)
-        : 'Erreur lors de l\'ajustement de la semaine de travail.';
-      throw new Error(message);
+      const ok = await this.updateWeekViaApi(week.id, { start_date: newStartDate, end_date: newEndDate });
+      if (!ok) {
+        console.error('Error shifting week start in Supabase:', err);
+        this._weeks.set(previousWeeks);
+        const message = (typeof err === 'object' && err !== null && 'message' in err)
+          ? String((err as { message?: unknown }).message)
+          : 'Erreur lors de l\'ajustement de la semaine de travail.';
+        throw new Error(message);
+      }
     }
 
     return { ...week, start_date: newStartDate, end_date: newEndDate };
@@ -317,7 +514,14 @@ export class CahierService {
     const closedAt = new Date().toISOString();
 
     const previousWeeks = this._weeks();
+    const previousAdminWeeks = this._adminWeeks();
     const updated = previousWeeks.map(w => {
+      if (w.id === weekId) {
+        return { ...w, is_closed: true, closed_at: closedAt };
+      }
+      return w;
+    });
+    const updatedAdmin = previousAdminWeeks.map(w => {
       if (w.id === weekId) {
         return { ...w, is_closed: true, closed_at: closedAt };
       }
@@ -325,6 +529,7 @@ export class CahierService {
     });
 
     this._weeks.set(updated);
+    this._adminWeeks.set(updatedAdmin);
 
     try {
       const { error } = await this.supabaseService.client
@@ -332,12 +537,19 @@ export class CahierService {
         .update({ is_closed: true, closed_at: closedAt })
         .eq('id', weekId);
 
-      if (error) throw error;
+      if (error) {
+        const ok = await this.updateWeekViaApi(weekId, { is_closed: true, closed_at: closedAt });
+        if (!ok) throw error;
+      }
     } catch (err) {
-      console.error('Error closing week:', err);
-      // Rollback
-      this._weeks.set(previousWeeks);
-      return false;
+      const ok = await this.updateWeekViaApi(weekId, { is_closed: true, closed_at: closedAt });
+      if (!ok) {
+        console.error('Error closing week:', err);
+        // Rollback
+        this._weeks.set(previousWeeks);
+        this._adminWeeks.set(previousAdminWeeks);
+        return false;
+      }
     }
 
     return true;
@@ -345,7 +557,7 @@ export class CahierService {
 
   /**
    * Modifie la date de début et de fin d'une semaine de travail (exposé côté
-   * UI uniquement dans la vue admin). Agit sur _adminWeeks.
+   * UI uniquement dans la vue admin). Agit sur _adminWeeks et _weeks.
    */
   async adminUpdateWeek(weekId: string, startDate: string, endDate: string): Promise<{ success: boolean; error?: string }> {
     if (endDate < startDate) {
@@ -353,10 +565,17 @@ export class CahierService {
     }
 
     const previousAdminWeeks = this._adminWeeks();
-    const updatedOptimistic = previousAdminWeeks.map(w =>
+    const previousWeeks = this._weeks();
+
+    const updatedAdminOptimistic = previousAdminWeeks.map(w =>
       w.id === weekId ? { ...w, start_date: startDate, end_date: endDate } : w
     );
-    this._adminWeeks.set(updatedOptimistic);
+    const updatedUserOptimistic = previousWeeks.map(w =>
+      w.id === weekId ? { ...w, start_date: startDate, end_date: endDate } : w
+    );
+
+    this._adminWeeks.set(updatedAdminOptimistic);
+    this._weeks.set(updatedUserOptimistic);
 
     try {
       const { error } = await this.supabaseService.client
@@ -364,17 +583,24 @@ export class CahierService {
         .update({ start_date: startDate, end_date: endDate })
         .eq('id', weekId);
 
-      if (error) throw error;
+      if (error) {
+        const ok = await this.updateWeekViaApi(weekId, { start_date: startDate, end_date: endDate });
+        if (!ok) throw error;
+      }
     } catch (err) {
-      console.error('Error updating week (admin):', err);
-      this._adminWeeks.set(previousAdminWeeks);
-      const isUniqueViolation = typeof err === 'object' && err !== null && 'code' in err && (err as { code?: string }).code === '23505';
-      const message = isUniqueViolation
-        ? 'Une autre semaine existe déjà pour ce site avec ces mêmes dates.'
-        : (typeof err === 'object' && err !== null && 'message' in err)
-          ? String((err as { message?: unknown }).message)
-          : 'Erreur lors de la modification de la semaine.';
-      return { success: false, error: message };
+      const ok = await this.updateWeekViaApi(weekId, { start_date: startDate, end_date: endDate });
+      if (!ok) {
+        console.error('Error updating week (admin):', err);
+        this._adminWeeks.set(previousAdminWeeks);
+        this._weeks.set(previousWeeks);
+        const isUniqueViolation = typeof err === 'object' && err !== null && 'code' in err && (err as { code?: string }).code === '23505';
+        const message = isUniqueViolation
+          ? 'Une autre semaine existe déjà pour ce site avec ces mêmes dates.'
+          : (typeof err === 'object' && err !== null && 'message' in err)
+            ? String((err as { message?: unknown }).message)
+            : 'Erreur lors de la modification de la semaine.';
+        return { success: false, error: message };
+      }
     }
 
     return { success: true };
@@ -405,16 +631,22 @@ export class CahierService {
         .update({ is_closed: false, closed_at: null })
         .eq('id', weekId);
 
-      if (error) throw error;
+      if (error) {
+        const ok = await this.updateWeekViaApi(weekId, { is_closed: false, closed_at: null });
+        if (!ok) throw error;
+      }
     } catch (err) {
-      console.error('Error reopening week (admin):', err);
-      // Rollback
-      this._adminWeeks.set(previousAdminWeeks);
-      this._weeks.set(previousWeeks);
-      const message = (typeof err === 'object' && err !== null && 'message' in err)
-        ? String((err as { message?: unknown }).message)
-        : 'Erreur lors de la réouverture de la semaine.';
-      return { success: false, error: message };
+      const ok = await this.updateWeekViaApi(weekId, { is_closed: false, closed_at: null });
+      if (!ok) {
+        console.error('Error reopening week (admin):', err);
+        // Rollback
+        this._adminWeeks.set(previousAdminWeeks);
+        this._weeks.set(previousWeeks);
+        const message = (typeof err === 'object' && err !== null && 'message' in err)
+          ? String((err as { message?: unknown }).message)
+          : 'Erreur lors de la réouverture de la semaine.';
+        return { success: false, error: message };
+      }
     }
 
     return { success: true };
@@ -423,10 +655,41 @@ export class CahierService {
   /**
    * Validates if a date can be inserted for a specific site's week
    */
-  validateOperationDate(site: string, dateStr: string): { allowed: boolean; reason?: string; activeWeek?: WorkWeek } {
+  validateOperationDate(
+    site: string,
+    dateStr: string,
+    options?: { isRattrapage?: boolean; realDate?: string }
+  ): { allowed: boolean; reason?: string; activeWeek?: WorkWeek } {
+    // 1. Check if the date falls inside a closed week
+    const closedWeek = this._weeks().find(w => w.site === site && w.is_closed && dateStr >= w.start_date && dateStr <= w.end_date);
+    if (closedWeek) {
+      return {
+        allowed: false,
+        reason: `La semaine du ${closedWeek.start_date} au ${closedWeek.end_date} pour le site ${site} est clôturée. Aucune saisie ni modification n'est autorisée.`
+      };
+    }
+
     const active = this.getActiveWeek(site);
     if (!active) {
       return { allowed: true };
+    }
+
+    // Rattrapage d'une opération passée :
+    if (options?.isRattrapage && options.realDate) {
+      if (options.realDate > active.start_date) {
+        return {
+          allowed: false,
+          reason: `En mode rattrapage, la date réelle de l'opération (${options.realDate}) doit être antérieure au début de la semaine active (${active.start_date}).`
+        };
+      }
+      if (dateStr < active.start_date || dateStr > active.end_date) {
+        return {
+          allowed: false,
+          reason: `La date comptable d'enregistrement doit se situer dans la semaine active en cours (du ${active.start_date} au ${active.end_date}).`,
+          activeWeek: active
+        };
+      }
+      return { allowed: true, activeWeek: active };
     }
 
     if (dateStr < active.start_date) {
@@ -453,7 +716,8 @@ export class CahierService {
    */
   private async loadInitialOperations(userId?: string) {
     const user = this.authService.currentUser();
-    if (!userId || !user?.assignedSiteName) {
+    const userSites = this.getUserAssignedSites(user);
+    if (!userId || userSites.length === 0) {
       this._operations.set([]);
       return;
     }
@@ -462,7 +726,7 @@ export class CahierService {
       const { data, error } = await this.supabaseService.client
         .from('operations')
         .select('*, operation_items(*)')
-        .eq('site', user.assignedSiteName)
+        .in('site', userSites)
         .order('date', { ascending: false });
 
       if (!error && data) {
@@ -488,31 +752,48 @@ export class CahierService {
       return;
     }
 
+    let fetchedFromApi = false;
+
     try {
       const session = await this.supabaseService.getSession();
       const token = session?.access_token;
 
-      if (!token) {
-        console.error('❌ Erreur: Session non valide pour admin fetch.');
-        return;
-      }
+      if (token) {
+        const response = await fetch('/api/system/operations', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
 
-      const response = await fetch('/api/admin/operations', {
-        headers: {
-          'Authorization': `Bearer ${token}`
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.operations) {
+            const mappedOps = this.mapDatabaseOperations(data.operations);
+            this._adminOperations.set(mappedOps);
+            fetchedFromApi = true;
+          }
         }
-      });
-
-      const data = await response.json();
-
-      if (response.ok && data.success && data.operations) {
-        const mappedOps = this.mapDatabaseOperations(data.operations);
-        this._adminOperations.set(mappedOps);
-      } else {
-        console.error('❌ Erreur serveur (Admin Fetch):', data.error);
       }
-    } catch (err) {
-      console.error('❌ Erreur Réseau (Admin Fetch):', err);
+    } catch {
+      // Endpoint API non joignable ou clé serveur absente : repli vers la requête Supabase directe
+    }
+
+    if (!fetchedFromApi) {
+      try {
+        const { data, error } = await this.supabaseService.client
+          .from('operations')
+          .select('*, operation_items(*)')
+          .order('date', { ascending: false });
+
+        if (!error && data) {
+          const mappedOps = this.mapDatabaseOperations(data);
+          this._adminOperations.set(mappedOps);
+        } else if (error) {
+          console.error('❌ Erreur Supabase (Fetch opérations admin):', error.message);
+        }
+      } catch (err) {
+        console.error('❌ Erreur Supabase direct (Admin Fetch):', err);
+      }
     }
   }
 
@@ -534,10 +815,13 @@ export class CahierService {
         isDraft: isDraftVal as boolean,
         user_id: dbOp['user_id'] as string,
         week_id: dbOp['week_id'] as string,
+        is_rattrapage: !!(dbOp['is_rattrapage'] || dbOp['israttrapage']),
+        real_date: (dbOp['real_date'] || dbOp['realdate'] || '') as string,
         items: Array.isArray(rawItems) ? (rawItems as Record<string, unknown>[]).map((item) => ({
           id: (item['id'] as string) || crypto.randomUUID(),
           date: (item['date'] as string) || (dbOp['date'] as string),
           dn: (item['dn'] as string) || '',
+          matricule: (item['matricule'] as string) || '',
           produit: (item['produit'] as string) || '',
           qte: Number(item['quantite'] ?? item['qte']) || 0,
           pu: Number(item['pu']) || 0,
@@ -562,7 +846,10 @@ export class CahierService {
     const id = opData.id || crypto.randomUUID();
 
     // 1. Validation of the date against work weeks
-    const validation = this.validateOperationDate(opData.site, opData.date);
+    const validation = this.validateOperationDate(opData.site, opData.date, {
+      isRattrapage: opData.is_rattrapage,
+      realDate: opData.real_date
+    });
     if (!validation.allowed) {
       throw new Error(validation.reason);
     }
@@ -616,7 +903,9 @@ export class CahierService {
           collaborateur: finalizedOp.collaborateur,
           isdraft: finalizedOp.isDraft,
           user_id: finalizedOp.user_id,
-          week_id: finalizedOp.week_id
+          week_id: finalizedOp.week_id,
+          is_rattrapage: finalizedOp.is_rattrapage || false,
+          real_date: finalizedOp.real_date || null
         }])
         .select()
         .single();
@@ -640,6 +929,7 @@ export class CahierService {
           operation_id: finalizedOp.id,
           date: item.date || finalizedOp.date || '',
           dn: item.dn || '',
+          matricule: item.matricule || '',
           produit: item.produit || '',
           quantite: Number(item.qte) || 0,
           pu: Number(item.pu) || 0,
@@ -759,6 +1049,7 @@ export class CahierService {
           operation_id: draftOp.id,
           date: item.date || draftOp.date || '',
           dn: item.dn || '',
+          matricule: item.matricule || '',
           produit: item.produit || '',
           quantite: Number(item.qte) || 0,
           pu: Number(item.pu) || 0,
@@ -789,6 +1080,25 @@ export class CahierService {
 
   async deleteOperation(id: string): Promise<boolean> {
     const previousOperations = this._operations();
+    const opToDelete = previousOperations.find(o => o.id === id);
+
+    if (opToDelete) {
+      if (opToDelete.week_id) {
+        const week = this._weeks().find(w => w.id === opToDelete.week_id);
+        if (week?.is_closed) {
+          console.warn('Cannot delete operation from a closed week');
+          return false;
+        }
+      }
+      if (opToDelete.site && opToDelete.date) {
+        const closed = this._weeks().find(w => w.site === opToDelete.site && w.is_closed && opToDelete.date >= w.start_date && opToDelete.date <= w.end_date);
+        if (closed) {
+          console.warn('Cannot delete operation from a closed week');
+          return false;
+        }
+      }
+    }
+
     const updated = previousOperations.filter(op => op.id !== id);
     this._operations.set(updated);
 
@@ -869,6 +1179,7 @@ export class CahierService {
           operation_id: op.id,
           date: item.date || op.date || '',
           dn: item.dn || '',
+          matricule: item.matricule || '',
           produit: item.produit || '',
           quantite: Number(item.qte) || 0,
           pu: Number(item.pu) || 0,

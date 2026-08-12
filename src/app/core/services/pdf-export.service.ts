@@ -167,17 +167,18 @@ export class PdfExportService {
       }
 
       let headers = showDn 
-        ? [['Date', labelDn, 'Produit', 'Qte (t)', 'PU (FCFA)', 'Montant (FCFA)']]
+        ? [['Date', labelDn, 'Matricule', 'Produit', 'Qte (t)', 'PU (FCFA)', 'Montant (FCFA)']]
         : [['Date', 'Produit', 'Qte (t)', 'PU (FCFA)', 'Montant (FCFA)']];
 
       let colStyles: Record<number, { cellWidth: number, halign?: 'left' | 'right' | 'center' }> = showDn
         ? {
-            0: { cellWidth: 25 },
-            1: { cellWidth: 35 },
-            2: { cellWidth: 40, halign: 'left' },
-            3: { cellWidth: 22, halign: 'right' },
-            4: { cellWidth: 25, halign: 'right' },
-            5: { cellWidth: 35, halign: 'right' }
+            0: { cellWidth: 22 },
+            1: { cellWidth: 28 },
+            2: { cellWidth: 25 },
+            3: { cellWidth: 35, halign: 'left' },
+            4: { cellWidth: 20, halign: 'right' },
+            5: { cellWidth: 22, halign: 'right' },
+            6: { cellWidth: 30, halign: 'right' }
           }
         : {
             0: { cellWidth: 30 },
@@ -212,6 +213,7 @@ export class PdfExportService {
           return [
             this.formatFrenchDate(item.date),
             item.dn || '-',
+            item.matricule || '-',
             item.produit || '-',
             item.qte.toLocaleString('fr-FR'),
             item.pu.toLocaleString('fr-FR'),
@@ -247,6 +249,7 @@ export class PdfExportService {
             '',
             '',
             '',
+            '',
             totalMontant.toLocaleString('fr-FR')
           ]);
         } else {
@@ -262,6 +265,7 @@ export class PdfExportService {
         if (showDn) {
           data.push([
             'TOTAL',
+            '',
             '',
             '',
             totalQte.toLocaleString('fr-FR'),

@@ -68,8 +68,35 @@ export class AuthService {
       // exactement comme le vérifient déjà la RLS et server.ts.
       role: appMetadata['role'] || 'user',
       avatarUrl: metadata['avatar_url'] || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150',
-      assignedSiteId: appMetadata['assignedSiteId'] || undefined,
-      assignedSiteName: appMetadata['assignedSiteName'] || undefined
+      assignedSiteId: appMetadata['assignedSiteId'] || metadata['assignedSiteId'] || undefined,
+      assignedSiteName: appMetadata['assignedSiteName'] || metadata['assignedSiteName'] || undefined,
+      assignedSiteNames: (() => {
+        const list: string[] = [];
+        const processSource = (rawNames: unknown, rawSingle: unknown) => {
+          if (Array.isArray(rawNames) && rawNames.length > 0) {
+            rawNames.forEach((item: unknown) => {
+              if (typeof item === 'string') {
+                item.split(',').forEach(sub => {
+                  const t = sub.trim();
+                  if (t) list.push(t);
+                });
+              }
+            });
+          }
+          if (typeof rawSingle === 'string' && rawSingle.trim()) {
+            rawSingle.split(',').forEach((sub: string) => {
+              const t = sub.trim();
+              if (t) list.push(t);
+            });
+          }
+        };
+
+        processSource(appMetadata['assignedSiteNames'], appMetadata['assignedSiteName']);
+        processSource(metadata['assignedSiteNames'], metadata['assignedSiteName']);
+
+        const uniqueList = Array.from(new Set(list));
+        return uniqueList.length > 0 ? uniqueList : undefined;
+      })()
     };
     this.currentUserSignal.set(portUser);
   }
@@ -103,7 +130,7 @@ export class AuthService {
   /**
    * Inscription d'un nouvel utilisateur dans Supabase via l'API sécurisée côté serveur
    */
-  async register(email: string, password: string, displayName: string, role: 'admin' | 'user' = 'user', assignedSiteName?: string): Promise<{ success: boolean; error?: string }> {
+  async register(email: string, password: string, displayName: string, role: 'admin' | 'user' = 'user', assignedSiteName?: string, assignedSiteNames?: string[]): Promise<{ success: boolean; error?: string }> {
     try {
       const session = await this.supabaseService.getSession();
       const token = session?.access_token;
@@ -112,13 +139,13 @@ export class AuthService {
         return { success: false, error: 'Session non valide ou expirée.' };
       }
 
-      const response = await fetch('/api/admin/users', {
+      const response = await fetch('/api/system/collaborators', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ email, password, displayName, role, assignedSiteName })
+        body: JSON.stringify({ email, password, displayName, role, assignedSiteName, assignedSiteNames })
       });
 
       const data = await response.json();
@@ -146,7 +173,7 @@ export class AuthService {
         return { success: false, error: 'Session non valide ou expirée.' };
       }
 
-      const response = await fetch('/api/admin/users', {
+      const response = await fetch('/api/system/collaborators', {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -178,7 +205,7 @@ export class AuthService {
         return { success: false, error: 'Session non valide ou expirée.' };
       }
 
-      const response = await fetch(`/api/admin/users/${encodeURIComponent(userId)}`, {
+      const response = await fetch(`/api/system/collaborators/${encodeURIComponent(userId)}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -189,7 +216,8 @@ export class AuthService {
           displayName: profile.displayName,
           avatarUrl: profile.avatarUrl,
           role: profile.role,
-          assignedSiteName: profile.assignedSiteName
+          assignedSiteName: profile.assignedSiteName,
+          assignedSiteNames: profile.assignedSiteNames
         })
       });
 

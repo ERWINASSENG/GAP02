@@ -1,6 +1,6 @@
 <div class="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6" id="cahier-page-container">
 
-  @if (!authService.currentUser()?.assignedSiteName && authService.currentUser()?.role !== 'admin') {
+  @if (visibleSites().length === 0 && authService.currentUser()?.role !== 'admin') {
     <!-- Aucun site spécifié : Affichage d'un écran d'accès restreint poli et professionnel -->
     <div class="flex flex-col items-center justify-center py-16 px-4 text-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-xs space-y-5 animate-fade-in" id="no-site-error-container">
       <div class="w-16 h-16 rounded-2xl bg-amber-500/10 dark:bg-amber-500/5 flex items-center justify-center text-amber-500" id="no-site-icon">
@@ -177,6 +177,41 @@
             @if (currentStep() === 3) {
               <div class="space-y-6 animate-slide-in" id="step-3-content">
 
+                <!-- Bloc Option Rattrapage d'une semaine passée -->
+                <div class="p-3.5 bg-amber-50/80 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 rounded-xl space-y-2.5">
+                  <div class="flex items-center gap-3">
+                    <input 
+                      type="checkbox" 
+                      id="is_rattrapage" 
+                      formControlName="is_rattrapage" 
+                      class="w-4 h-4 text-amber-600 border-amber-300 rounded-md focus:ring-amber-500 cursor-pointer"
+                    />
+                    <label for="is_rattrapage" class="text-xs font-bold text-amber-900 dark:text-amber-200 cursor-pointer flex items-center gap-1.5 select-none">
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 text-amber-600 shrink-0">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                      </svg>
+                      <span>Saisie en rattrapage d'une semaine antérieure</span>
+                    </label>
+                  </div>
+
+                  @if (operationForm.value.is_rattrapage) {
+                    <div class="pl-7 space-y-2 animate-fade-in">
+                      <p class="text-[11px] text-amber-800 dark:text-amber-300 leading-normal">
+                        L'opération sera comptabilisée dans la semaine active en cours, tout en conservant la date réelle spécifiée ci-dessous.
+                      </p>
+                      <div class="flex flex-wrap items-center gap-2">
+                        <label for="real_date" class="text-xs font-semibold text-slate-700 dark:text-slate-300">Date réelle de l'opération :</label>
+                        <input 
+                          type="date" 
+                          id="real_date" 
+                          formControlName="real_date" 
+                          class="px-3 py-1.5 bg-white dark:bg-slate-900 border border-amber-300 dark:border-amber-700 rounded-lg text-xs font-semibold text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-amber-500/30"
+                        />
+                      </div>
+                    </div>
+                  }
+                </div>
+
                 <!-- Dynamic Items Table -->
                 <div class="space-y-4" id="operation-table-section">
                   <div class="flex items-center justify-end">
@@ -210,20 +245,23 @@
                         
                         @if (operationForm.value.type === 'Chargement des wagons' || operationForm.value.type === 'Chargement wagons' || operationForm.value.type === 'Chargement Wagon Blé' || operationForm.value.type === 'Chargement Wagon Farine') {
                           @if (operationForm.value.type === 'Chargement Wagon Blé' || operationForm.value.produit === 'Blé') {
-                            <!-- CHARGEMENT WAGONS BLE: DATE, N° WAGON, TONNAGE, PU, MONTANT -->
+                            <!-- CHARGEMENT WAGONS BLE: DATE, N° WAGON, MATRICULE, TONNAGE, PU, MONTANT -->
                             <th class="py-3 px-3 sm:py-3 sm:px-4 border border-slate-300 dark:border-slate-700 text-center">N° WAGON</th>
+                            <th class="py-3 px-3 sm:py-3 sm:px-4 border border-slate-300 dark:border-slate-700 text-center">MATRICULE</th>
                             <th class="py-3 px-3 sm:py-3 sm:px-4 w-28 border border-slate-300 dark:border-slate-700 text-center">TONNAGE</th>
                           } @else {
-                            <!-- CHARGEMENT WAGONS FARINE: DATE, N° WAGON, Nbr SACS, PU, MONTANT -->
+                            <!-- CHARGEMENT WAGONS FARINE: DATE, N° WAGON, MATRICULE, Nbr SACS, PU, MONTANT -->
                             <th class="py-3 px-3 sm:py-3 sm:px-4 border border-slate-300 dark:border-slate-700 text-center">N° WAGON</th>
+                            <th class="py-3 px-3 sm:py-3 sm:px-4 border border-slate-300 dark:border-slate-700 text-center">MATRICULE</th>
                             <th class="py-3 px-3 sm:py-3 sm:px-4 w-28 border border-slate-300 dark:border-slate-700 text-center">Nbr SACS</th>
                           }
                         } @else if (operationForm.value.type === 'Chargement Camions') {
-                          <!-- CHARGEMENT CAMIONS TUSCANI: DATE, CAMIONS, TONNAGE, PU, MONTANT -->
+                          <!-- CHARGEMENT CAMIONS TUSCANI: DATE, CAMIONS, MATRICULE, TONNAGE, PU, MONTANT -->
                           <th class="py-3 px-3 sm:py-3 sm:px-4 border border-slate-300 dark:border-slate-700 text-center">CAMIONS</th>
+                          <th class="py-3 px-3 sm:py-3 sm:px-4 border border-slate-300 dark:border-slate-700 text-center">MATRICULE</th>
                           <th class="py-3 px-3 sm:py-3 sm:px-4 w-28 border border-slate-300 dark:border-slate-700 text-center">TONNAGE</th>
                         } @else {
-                          <!-- Standard Types: DATE, [DN / LTI / ISTI], PRODUIT, QTE, PU, MONTANT -->
+                          <!-- Standard Types: DATE, [DN / LTI / ISTI], MATRICULE, PRODUIT, QTE, PU, MONTANT -->
                           @if (operationForm.value.type === 'Chargement' && (operationForm.value.site === 'AFISA' || operationForm.value.site === 'SCMC')) {
                             <th class="py-3 px-3 sm:py-3 sm:px-4 border border-slate-300 dark:border-slate-700 text-center">
                               <div class="flex items-center justify-center">
@@ -238,6 +276,7 @@
                                 </select>
                               </div>
                             </th>
+                            <th class="py-3 px-3 sm:py-3 sm:px-4 border border-slate-300 dark:border-slate-700 text-center">MATRICULE</th>
                           }
                           <th class="py-3 px-3 sm:py-3 sm:px-4 border border-slate-300 dark:border-slate-700 text-center min-w-[150px] max-w-[300px]">
                             {{ operationForm.value.type === 'Reconditionnement' ? 'DÉSIGNATION' : 'PRODUIT' }}
@@ -273,6 +312,15 @@
                                   class="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-sm uppercase text-center text-slate-900 dark:text-white focus:outline-hidden focus:ring-1 focus:ring-indigo-500/20"
                                 />
                               </td>
+                              <!-- MATRICULE -->
+                              <td class="py-3 px-3 sm:py-3 sm:px-3 border border-slate-300 dark:border-slate-700 text-center">
+                                <input 
+                                  type="text" 
+                                  formControlName="matricule"
+                                  placeholder="Matricule"
+                                  class="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-sm uppercase text-center text-slate-900 dark:text-white focus:outline-hidden focus:ring-1 focus:ring-indigo-500/20"
+                                />
+                              </td>
                               <!-- TONNAGE (input mapped to qte) -->
                               <td class="py-3 px-3 sm:py-3 sm:px-3 border border-slate-300 dark:border-slate-700 text-center">
                                 <input 
@@ -289,6 +337,15 @@
                                   type="text" 
                                   formControlName="dnNumber"
                                   placeholder="Wagon N°"
+                                  class="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-sm uppercase text-center text-slate-900 dark:text-white focus:outline-hidden focus:ring-1 focus:ring-indigo-500/20"
+                                />
+                              </td>
+                              <!-- MATRICULE -->
+                              <td class="py-3 px-3 sm:py-3 sm:px-3 border border-slate-300 dark:border-slate-700 text-center">
+                                <input 
+                                  type="text" 
+                                  formControlName="matricule"
+                                  placeholder="Matricule"
                                   class="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-sm uppercase text-center text-slate-900 dark:text-white focus:outline-hidden focus:ring-1 focus:ring-indigo-500/20"
                                 />
                               </td>
@@ -309,6 +366,15 @@
                                 type="text" 
                                 formControlName="dnNumber"
                                 placeholder="Camion"
+                                class="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-sm uppercase text-center text-slate-900 dark:text-white focus:outline-hidden focus:ring-1 focus:ring-indigo-500/20"
+                              />
+                            </td>
+                            <!-- MATRICULE -->
+                            <td class="py-3 px-3 sm:py-3 sm:px-3 border border-slate-300 dark:border-slate-700 text-center">
+                              <input 
+                                type="text" 
+                                formControlName="matricule"
+                                placeholder="Matricule"
                                 class="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-sm uppercase text-center text-slate-900 dark:text-white focus:outline-hidden focus:ring-1 focus:ring-indigo-500/20"
                               />
                             </td>
@@ -336,6 +402,15 @@
                                     class="w-full max-w-[100px] px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-sm uppercase text-center text-slate-900 dark:text-white focus:outline-hidden focus:ring-1 focus:ring-indigo-500/20"
                                   />
                                 </div>
+                              </td>
+                              <!-- MATRICULE -->
+                              <td class="py-3 px-3 sm:py-3 sm:px-3 border border-slate-300 dark:border-slate-700 text-center">
+                                <input 
+                                  type="text" 
+                                  formControlName="matricule"
+                                  placeholder="Matricule"
+                                  class="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-sm uppercase text-center text-slate-900 dark:text-white focus:outline-hidden focus:ring-1 focus:ring-indigo-500/20"
+                                />
                               </td>
                             }
                             <!-- Standard PRODUIT / DÉSIGNATION -->
@@ -920,6 +995,13 @@
                       </svg>
                       <span>Clôturer la semaine</span>
                     </button>
+                  } @else if (weekGroup.week && weekGroup.week.is_closed) {
+                    <span class="px-3 py-1 bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60 text-xs font-bold rounded-lg flex items-center gap-1">
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3.5 h-3.5 shrink-0">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
+                      </svg>
+                      <span>Semaine clôturée (Lecture seule)</span>
+                    </span>
                   }
                 </div>
 
@@ -943,6 +1025,7 @@
                             <th class="px-4 py-3 border border-slate-300 dark:border-slate-700 text-center">Date</th>
                             @if (op.type !== 'Son' && op.type !== 'Transfert') {
                               <th class="px-4 py-3 border border-slate-300 dark:border-slate-700 text-center">Identifiants (Wagon/Camion/DN)</th>
+                              <th class="px-4 py-3 border border-slate-300 dark:border-slate-700 text-center">Matricule</th>
                             }
                             <th class="px-4 py-3 border border-slate-300 dark:border-slate-700 text-center">Produit / Désignation</th>
                             <th class="px-4 py-3 border border-slate-300 dark:border-slate-700 text-center">Quantité</th>
@@ -960,6 +1043,9 @@
                               @if (op.type !== 'Son' && op.type !== 'Transfert') {
                                 <td class="px-4 py-3 border border-slate-300 dark:border-slate-700 text-center font-mono">
                                   {{ item.dn || '—' }}
+                                </td>
+                                <td class="px-4 py-3 border border-slate-300 dark:border-slate-700 text-center font-mono text-slate-600 dark:text-slate-300">
+                                  {{ item.matricule || '—' }}
                                 </td>
                               }
                               <td class="px-4 py-3 border border-slate-300 dark:border-slate-700 text-center text-slate-800 dark:text-slate-100 max-w-[200px] truncate">
@@ -982,13 +1068,17 @@
                                       class="px-2 py-1 text-xs bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg shadow-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-700 dark:text-slate-300 cursor-pointer max-w-[120px]"
                                     >
                                       <option value="" disabled selected class="bg-white text-slate-500 dark:bg-slate-900 dark:text-slate-400">Actions...</option>
-                                      <option value="edit" class="bg-white text-slate-900 dark:bg-slate-900 dark:text-white">Modifier</option>
+                                      @if (!isOperationWeekClosed(op)) {
+                                        <option value="edit" class="bg-white text-slate-900 dark:bg-slate-900 dark:text-white">Modifier</option>
+                                      }
                                       @if (authService.currentUser()?.role === 'admin') {
                                         <option value="excel" class="bg-white text-slate-900 dark:bg-slate-900 dark:text-white">Excel</option>
                                         <option value="pdf" class="bg-white text-slate-900 dark:bg-slate-900 dark:text-white">PDF</option>
                                         <option value="docx" class="bg-white text-slate-900 dark:bg-slate-900 dark:text-white">Word</option>
                                       }
-                                      <option value="delete" class="bg-white text-rose-600 dark:bg-slate-900 dark:text-rose-400 font-semibold">Supprimer</option>
+                                      @if (!isOperationWeekClosed(op)) {
+                                        <option value="delete" class="bg-white text-rose-600 dark:bg-slate-900 dark:text-rose-400 font-semibold">Supprimer</option>
+                                      }
                                     </select>
                                   </div>
                                 </td>
@@ -1019,7 +1109,7 @@
                 <table class="w-full text-center border-collapse border border-slate-300 dark:border-slate-700 block md:table overflow-x-auto whitespace-nowrap md:whitespace-normal">
                   <thead>
                     <tr class="bg-slate-100 dark:bg-slate-950 border-b border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-center font-bold tracking-wider uppercase text-xs">
-                      <th class="px-2 py-2.5 sm:px-4 sm:py-3 border border-slate-300 dark:border-slate-700" [attr.colspan]="showDn ? 7 : 6">
+                      <th class="px-2 py-2.5 sm:px-4 sm:py-3 border border-slate-300 dark:border-slate-700" [attr.colspan]="showDn ? 8 : 7">
                         @if (group.type === 'Chargement des wagons' || group.type === 'Chargement wagons') {
                           CHARGEMENT WAGONS {{ (group.product || '') | uppercase }}@if (selectedSummary()?.site !== 'AUTRE') { {{ ' ' + (selectedSummary()?.site || 'SCMC') | uppercase }} }
                         } @else {
@@ -1031,6 +1121,9 @@
                       <th class="px-2 py-2 sm:px-4 sm:py-3 border border-slate-300 dark:border-slate-700 text-center">Date</th>
                       @if (group.type !== 'Chargement Camions' && !isWagon && showDn) {
                         <th class="px-2 py-2 sm:px-4 sm:py-3 border border-slate-300 dark:border-slate-700 text-center">DN / LTI / ISTI</th>
+                      }
+                      @if (showDn || group.type === 'Chargement Camions' || isWagon) {
+                        <th class="px-2 py-2 sm:px-4 sm:py-3 border border-slate-300 dark:border-slate-700 text-center">Matricule</th>
                       }
                       @if (group.type !== 'Chargement Camions' && !isWagon) {
                         <th class="px-2 py-2 sm:px-4 sm:py-3 border border-slate-300 dark:border-slate-700 text-center">
@@ -1050,11 +1143,19 @@
                       @for (item of op.items; track $index; let idx = $index; let len = $count) {
                         <tr class="hover:bg-slate-50/30 dark:hover:bg-slate-950/10 transition-all text-xs border-b border-slate-200 dark:border-slate-800">
                           <td class="px-2 py-2 sm:px-4 sm:py-3 border border-slate-300 dark:border-slate-700 text-center font-mono text-slate-500 dark:text-slate-400">
-                            {{ formatDateFr(item.date) }}
+                            <div>{{ formatDateFr(item.date) }}</div>
+                            @if (op.is_rattrapage) {
+                              <span class="inline-block mt-0.5 px-1.5 py-0.5 text-[9px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300 rounded-md" [title]="'Date réelle : ' + (op.real_date || item.date)">
+                                Rattrapage (réel : {{ formatDateFr(op.real_date || item.date) }})
+                              </span>
+                            }
                           </td>
                           @if (showDn || group.type === 'Chargement Camions' || isWagon) {
                             <td class="px-2 py-2 sm:px-4 sm:py-3 border border-slate-300 dark:border-slate-700 text-center font-semibold text-slate-800 dark:text-slate-200">
                               {{ item.dn }}
+                            </td>
+                            <td class="px-2 py-2 sm:px-4 sm:py-3 border border-slate-300 dark:border-slate-700 text-center font-mono text-slate-600 dark:text-slate-300">
+                              {{ item.matricule || '—' }}
                             </td>
                           }
                           @if (group.type !== 'Chargement Camions' && !isWagon) {
@@ -1084,13 +1185,17 @@
                                   class="px-2 py-1 text-xs bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg shadow-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-700 dark:text-slate-300 cursor-pointer max-w-[120px]"
                                 >
                                   <option value="" disabled selected class="bg-white text-slate-500 dark:bg-slate-900 dark:text-slate-400">Actions...</option>
-                                  <option value="edit" class="bg-white text-slate-900 dark:bg-slate-900 dark:text-white">Modifier</option>
+                                  @if (!isOperationWeekClosed(op)) {
+                                    <option value="edit" class="bg-white text-slate-900 dark:bg-slate-900 dark:text-white">Modifier</option>
+                                  }
                                   @if (authService.currentUser()?.role === 'admin') {
                                     <option value="excel" class="bg-white text-slate-900 dark:bg-slate-900 dark:text-white">Excel</option>
                                     <option value="pdf" class="bg-white text-slate-900 dark:bg-slate-900 dark:text-white">PDF</option>
                                     <option value="docx" class="bg-white text-slate-900 dark:bg-slate-900 dark:text-white">Word</option>
                                   }
-                                  <option value="delete" class="bg-white text-rose-600 dark:bg-slate-900 dark:text-rose-400 font-semibold">Supprimer</option>
+                                  @if (!isOperationWeekClosed(op)) {
+                                    <option value="delete" class="bg-white text-rose-600 dark:bg-slate-900 dark:text-rose-400 font-semibold">Supprimer</option>
+                                  }
                                 </select>
                               </div>
                             </td>

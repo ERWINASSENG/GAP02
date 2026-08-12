@@ -3,6 +3,7 @@ export interface OperationItem {
   operation_id?: string;
   date: string;
   dn: string;
+  matricule?: string;
   produit: string;
   qte: number;
   pu: number;
@@ -51,6 +52,8 @@ export interface Operation {
   user_id?: string;
   week_id?: string; // Associated work week
   items?: OperationItem[];
+  is_rattrapage?: boolean;
+  real_date?: string; // Date réelle de l'opération de rattrapage (ex: 2026-07-29)
   // Temporary fields to maintain compatibility while refactoring
   quantite?: number;
   produit?: string;
