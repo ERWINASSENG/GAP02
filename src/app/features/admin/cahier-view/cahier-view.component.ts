@@ -51,10 +51,10 @@ export class AdminCahierViewComponent {
   readonly sites = ['SCMC', 'TUSCANI', 'AFISA', 'AUTRE'];
   readonly operationTypes = OPERATION_TYPES;
 
-  // Sélection de semaine active/clôturée
+  // Sélection de semaine active/clôturée/supprimée
   readonly selectedWeekId = signal<string | null>(null);
   readonly selectedSiteFilter = signal<string>('TOUS');
-  readonly selectedStatusFilter = signal<'ALL' | 'ACTIVE' | 'CLOSED'>('ALL');
+  readonly selectedStatusFilter = signal<'ALL' | 'ACTIVE' | 'CLOSED' | 'DELETED'>('ALL');
 
   // Semaines enrichies avec leurs statistiques
   readonly weeksWithStats = computed<WeekWithStats[]>(() => {
@@ -87,9 +87,13 @@ export class AdminCahierViewComponent {
 
     const status = this.selectedStatusFilter();
     if (status === 'ACTIVE') {
-      result = result.filter(w => !w.is_closed);
+      result = result.filter(w => !w.is_closed && !w.is_deleted);
     } else if (status === 'CLOSED') {
-      result = result.filter(w => w.is_closed);
+      result = result.filter(w => w.is_closed && !w.is_deleted);
+    } else if (status === 'DELETED') {
+      result = result.filter(w => w.is_deleted);
+    } else {
+      result = result.filter(w => !w.is_deleted);
     }
 
     // Tri du plus récent au plus ancien
@@ -654,6 +658,83 @@ export class AdminCahierViewComponent {
       );
     } finally {
       this.isSavingWeekPeriod.set(false);
+    }
+  }
+
+  // --- Restauration d'une semaine (Annuler suppression) ---
+  readonly weekToRestore = signal<WorkWeek | null>(null);
+  readonly isRestoringWeek = signal<boolean>(false);
+  readonly restoreWeekError = signal<string | null>(null);
+
+  confirmRestoreWeek(week: WorkWeek, event?: MouseEvent) {
+    if (event) event.stopPropagation();
+    this.weekToRestore.set(week);
+    this.restoreWeekError.set(null);
+  }
+
+  cancelRestoreWeek() {
+    this.weekToRestore.set(null);
+    this.restoreWeekError.set(null);
+  }
+
+  async restoreWeek() {
+    const week = this.weekToRestore();
+    if (!week) return;
+
+    this.isRestoringWeek.set(true);
+    this.restoreWeekError.set(null);
+
+    try {
+      const res = await this.cahierService.adminRestoreWeek(week.id);
+      if (res.success) {
+        this.weekToRestore.set(null);
+      } else {
+        this.restoreWeekError.set(res.error || 'Erreur lors de la restauration.');
+      }
+    } catch (err) {
+      this.restoreWeekError.set(err instanceof Error ? err.message : 'Erreur inattendue.');
+    } finally {
+      this.isRestoringWeek.set(false);
+    }
+  }
+
+  // --- Suppression d'une semaine (Soft delete) ---
+  readonly weekToDelete = signal<WorkWeek | null>(null);
+  readonly isDeletingWeek = signal<boolean>(false);
+  readonly deleteWeekError = signal<string | null>(null);
+
+  confirmDeleteWeek(week: WorkWeek, event?: MouseEvent) {
+    if (event) event.stopPropagation();
+    this.weekToDelete.set(week);
+    this.deleteWeekError.set(null);
+  }
+
+  cancelDeleteWeek() {
+    this.weekToDelete.set(null);
+    this.deleteWeekError.set(null);
+  }
+
+  async deleteWeek() {
+    const week = this.weekToDelete();
+    if (!week) return;
+
+    this.isDeletingWeek.set(true);
+    this.deleteWeekError.set(null);
+
+    try {
+      const res = await this.cahierService.deleteWeek(week.id);
+      if (res.success) {
+        if (this.selectedWeekId() === week.id) {
+          this.selectedWeekId.set(null);
+        }
+        this.weekToDelete.set(null);
+      } else {
+        this.deleteWeekError.set(res.error || 'Erreur lors de la suppression.');
+      }
+    } catch (err) {
+      this.deleteWeekError.set(err instanceof Error ? err.message : 'Erreur inattendue.');
+    } finally {
+      this.isDeletingWeek.set(false);
     }
   }
 }

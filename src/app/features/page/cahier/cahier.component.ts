@@ -1198,7 +1198,19 @@ export class CahierComponent implements OnInit {
     const summary = this.selectedSummary();
     if (!summary) return [];
 
-    const ops = [...summary.operations];
+    // Filtrer pour ne conserver que les opérations de la semaine en cours (non clôturée)
+    const ops = summary.operations.filter(op => {
+      if (this.isOperationWeekClosed(op)) {
+        return false;
+      }
+
+      const activeWeek = this.cahierService.getActiveWeek(op.site);
+      if (activeWeek) {
+        return op.date >= activeWeek.start_date && op.date <= activeWeek.end_date;
+      }
+
+      return true;
+    });
 
     // Helper to get sortable ISO time string from operation date and time
     const getOpTime = (op: Operation) => {

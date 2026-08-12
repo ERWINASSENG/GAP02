@@ -515,6 +515,146 @@ app.patch('/api/cahier/weeks/:id', async (req, res) => {
   }
 });
 
+// API: Marquer une semaine comme supprimée (Soft delete)
+app.delete('/api/cahier/weeks/:id', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      res.status(401).json({ error: 'Non autorisé' });
+      return;
+    }
+    const token = authHeader.replace('Bearer ', '');
+
+    let supabaseUrl = process.env['SUPABASE_URL'];
+    if (!supabaseUrl || !supabaseUrl.startsWith('http')) {
+      supabaseUrl = 'https://jwpigzkxkbszxzngfepn.supabase.co';
+    }
+    const supabaseServiceRole = process.env['SUPABASE_SERVICE_ROLE_KEY'];
+    if (!supabaseServiceRole) {
+      res.status(500).json({ error: 'Configuration serveur incomplète.' });
+      return;
+    }
+
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRole, {
+      auth: { autoRefreshToken: false, persistSession: false }
+    });
+
+    const { data: authData, error: authError } = await supabaseAdmin.auth.getUser(token);
+    const user = authData?.user;
+    if (authError || !user) {
+      res.status(401).json({ error: 'Utilisateur non authentifié.' });
+      return;
+    }
+
+    const weekId = req.params.id;
+
+    let { data, error } = await supabaseAdmin
+      .from('cahier_weeks')
+      .update({
+        is_deleted: true,
+        deleted_at: new Date().toISOString()
+      })
+      .eq('id', weekId)
+      .select();
+
+    if (error && (error.code === 'PGRST204' || error.message.includes('deleted_at'))) {
+      const res1 = await supabaseAdmin
+        .from('cahier_weeks')
+        .update({ is_deleted: true })
+        .eq('id', weekId)
+        .select();
+      data = res1.data;
+      error = res1.error;
+    }
+
+    if (error && (error.code === 'PGRST204' || error.message.includes('is_deleted'))) {
+      const res2 = await supabaseAdmin
+        .from('cahier_weeks')
+        .delete()
+        .eq('id', weekId);
+      if (!res2.error) {
+        res.json({ success: true, week: { id: weekId, is_deleted: true } });
+        return;
+      }
+      error = res2.error;
+    }
+
+    if (error) {
+      res.status(400).json({ error: error.message, code: error.code });
+      return;
+    }
+
+    res.json({ success: true, week: data?.[0] || { id: weekId, is_deleted: true } });
+  } catch (err: unknown) {
+    const errMsg = err instanceof Error ? err.message : 'Internal Server Error';
+    res.status(500).json({ error: errMsg });
+  }
+});
+
+// API: Restaurer une semaine supprimée (Annuler la suppression - Administrateur)
+app.post('/api/cahier/weeks/:id/restore', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      res.status(401).json({ error: 'Non autorisé' });
+      return;
+    }
+    const token = authHeader.replace('Bearer ', '');
+
+    let supabaseUrl = process.env['SUPABASE_URL'];
+    if (!supabaseUrl || !supabaseUrl.startsWith('http')) {
+      supabaseUrl = 'https://jwpigzkxkbszxzngfepn.supabase.co';
+    }
+    const supabaseServiceRole = process.env['SUPABASE_SERVICE_ROLE_KEY'];
+    if (!supabaseServiceRole) {
+      res.status(500).json({ error: 'Configuration serveur incomplète.' });
+      return;
+    }
+
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRole, {
+      auth: { autoRefreshToken: false, persistSession: false }
+    });
+
+    const { data: authData, error: authError } = await supabaseAdmin.auth.getUser(token);
+    const user = authData?.user;
+    if (authError || !user) {
+      res.status(401).json({ error: 'Utilisateur non authentifié.' });
+      return;
+    }
+
+    const weekId = req.params.id;
+
+    let { data, error } = await supabaseAdmin
+      .from('cahier_weeks')
+      .update({
+        is_deleted: false,
+        deleted_at: null
+      })
+      .eq('id', weekId)
+      .select();
+
+    if (error && (error.code === 'PGRST204' || error.message.includes('deleted_at'))) {
+      const res1 = await supabaseAdmin
+        .from('cahier_weeks')
+        .update({ is_deleted: false })
+        .eq('id', weekId)
+        .select();
+      data = res1.data;
+      error = res1.error;
+    }
+
+    if (error) {
+      res.status(400).json({ error: error.message, code: error.code });
+      return;
+    }
+
+    res.json({ success: true, week: data?.[0] || { id: weekId, is_deleted: false } });
+  } catch (err: unknown) {
+    const errMsg = err instanceof Error ? err.message : 'Internal Server Error';
+    res.status(500).json({ error: errMsg });
+  }
+});
+
 // API 404 handler - empêche les requêtes API d'échouer sur le rendu HTML d'Angular
 app.use('/api', (req, res) => {
   res.status(404).json({ error: 'Ressource API non trouvée.' });

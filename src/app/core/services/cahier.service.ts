@@ -153,6 +153,8 @@ export class CahierService {
             end_date: startDate ? this.computeWeekEndDate(startDate) : (w['end_date'] as string),
             is_closed: !!w['is_closed'],
             closed_at: w['closed_at'] as string,
+            is_deleted: !!w['is_deleted'],
+            deleted_at: w['deleted_at'] as string,
             created_at: w['created_at'] as string,
             user_id: w['user_id'] as string
           };
@@ -182,7 +184,7 @@ export class CahierService {
     try {
       const apiWeeks = await this.fetchWeeksViaApi();
       if (apiWeeks.length > 0) {
-        const filtered = apiWeeks.filter(w => userNormSites.includes((w.site || '').trim().toUpperCase()));
+        const filtered = apiWeeks.filter(w => !w.is_deleted && userNormSites.includes((w.site || '').trim().toUpperCase()));
         this._weeks.set(filtered);
         void this.syncWeekEndDates(filtered);
         return;
@@ -209,11 +211,13 @@ export class CahierService {
               end_date: startDate ? this.computeWeekEndDate(startDate) : (w['end_date'] as string),
               is_closed: !!w['is_closed'],
               closed_at: w['closed_at'] as string,
+              is_deleted: !!w['is_deleted'],
+              deleted_at: w['deleted_at'] as string,
               created_at: w['created_at'] as string,
               user_id: w['user_id'] as string
             };
           })
-          .filter(w => userNormSites.includes(w.site.toUpperCase()));
+          .filter(w => !w.is_deleted && userNormSites.includes(w.site.toUpperCase()));
 
         this._weeks.set(mappedWeeks);
         void this.syncWeekEndDates(mappedWeeks);
@@ -265,6 +269,8 @@ export class CahierService {
             end_date: startDate ? this.computeWeekEndDate(startDate) : (w['end_date'] as string),
             is_closed: !!w['is_closed'],
             closed_at: w['closed_at'] as string,
+            is_deleted: !!w['is_deleted'],
+            deleted_at: w['deleted_at'] as string,
             created_at: w['created_at'] as string,
             user_id: w['user_id'] as string
           };
@@ -282,7 +288,7 @@ export class CahierService {
   }
 
   /**
-   * Gets the active (not closed) week for a specific site
+   * Gets the active (not closed, not deleted) week for a specific site
    */
   getActiveWeek(site: string): WorkWeek | undefined {
     if (!site) return undefined;
@@ -291,7 +297,7 @@ export class CahierService {
     const weeksList = (user?.role === 'admin' && this._adminWeeks().length > 0)
       ? this._adminWeeks()
       : this._weeks();
-    return weeksList.find(w => (w.site || '').trim().toUpperCase() === target && !w.is_closed);
+    return weeksList.find(w => (w.site || '').trim().toUpperCase() === target && !w.is_closed && !w.is_deleted);
   }
 
   private computeWeekEndDate(startDateStr: string): string {
@@ -650,6 +656,155 @@ export class CahierService {
     }
 
     return { success: true };
+  }
+
+  /**
+   * Supprime une semaine de travail (soft-delete).
+   * Agit sur _adminWeeks et _weeks.
+   */
+  async deleteWeek(weekId: string): Promise<{ success: boolean; error?: string }> {
+    const deletedAt = new Date().toISOString();
+    const previousAdminWeeks = this._adminWeeks();
+    const previousWeeks = this._weeks();
+
+    // Mise à jour optimiste
+    const updatedAdmin = previousAdminWeeks.map(w =>
+      w.id === weekId ? { ...w, is_deleted: true, deleted_at: deletedAt } : w
+    );
+    const updatedUser = previousWeeks.filter(w => w.id !== weekId);
+
+    this._adminWeeks.set(updatedAdmin);
+    this._weeks.set(updatedUser);
+
+    try {
+      let { error } = await this.supabaseService.client
+        .from('cahier_weeks')
+        .update({ is_deleted: true, deleted_at: deletedAt })
+        .eq('id', weekId);
+
+      if (error && (error.code === 'PGRST204' || error.message.includes('deleted_at'))) {
+        const res1 = await this.supabaseService.client
+          .from('cahier_weeks')
+          .update({ is_deleted: true })
+          .eq('id', weekId);
+        error = res1.error;
+      }
+
+      if (error) {
+        const ok = await this.deleteWeekViaApi(weekId);
+        if (!ok) throw error;
+      }
+    } catch (err) {
+      const ok = await this.deleteWeekViaApi(weekId);
+      if (!ok) {
+        console.error('Error deleting week:', err);
+        // Rollback
+        this._adminWeeks.set(previousAdminWeeks);
+        this._weeks.set(previousWeeks);
+        const message = (typeof err === 'object' && err !== null && 'message' in err)
+          ? String((err as { message?: unknown }).message)
+          : 'Erreur lors de la suppression de la semaine.';
+        return { success: false, error: message };
+      }
+    }
+
+    return { success: true };
+  }
+
+  private async deleteWeekViaApi(weekId: string): Promise<boolean> {
+    try {
+      const token = await this.getAuthToken();
+      if (!token) return false;
+
+      const response = await fetch(`/api/cahier/weeks/${weekId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      return response.ok;
+    } catch (e) {
+      console.warn('API fallback error deleting week:', e);
+      return false;
+    }
+  }
+
+  /**
+   * Annule la suppression d'une semaine (Restauration - Admin).
+   * Agit sur _adminWeeks et _weeks.
+   */
+  async adminRestoreWeek(weekId: string): Promise<{ success: boolean; error?: string }> {
+    const previousAdminWeeks = this._adminWeeks();
+    const previousWeeks = this._weeks();
+
+    const targetWeek = previousAdminWeeks.find(w => w.id === weekId);
+    if (!targetWeek) {
+      return { success: false, error: 'Semaine introuvable.' };
+    }
+
+    const restoredWeek: WorkWeek = { ...targetWeek, is_deleted: false, deleted_at: undefined };
+
+    const updatedAdmin = previousAdminWeeks.map(w =>
+      w.id === weekId ? restoredWeek : w
+    );
+    const updatedUser = [restoredWeek, ...previousWeeks.filter(w => w.id !== weekId)];
+
+    this._adminWeeks.set(updatedAdmin);
+    this._weeks.set(updatedUser);
+
+    try {
+      let { error } = await this.supabaseService.client
+        .from('cahier_weeks')
+        .update({ is_deleted: false, deleted_at: null })
+        .eq('id', weekId);
+
+      if (error && (error.code === 'PGRST204' || error.message.includes('deleted_at'))) {
+        const res1 = await this.supabaseService.client
+          .from('cahier_weeks')
+          .update({ is_deleted: false })
+          .eq('id', weekId);
+        error = res1.error;
+      }
+
+      if (error) {
+        const ok = await this.restoreWeekViaApi(weekId);
+        if (!ok) throw error;
+      }
+    } catch (err) {
+      const ok = await this.restoreWeekViaApi(weekId);
+      if (!ok) {
+        console.error('Error restoring week (admin):', err);
+        // Rollback
+        this._adminWeeks.set(previousAdminWeeks);
+        this._weeks.set(previousWeeks);
+        const message = (typeof err === 'object' && err !== null && 'message' in err)
+          ? String((err as { message?: unknown }).message)
+          : 'Erreur lors de la restauration de la semaine.';
+        return { success: false, error: message };
+      }
+    }
+
+    return { success: true };
+  }
+
+  private async restoreWeekViaApi(weekId: string): Promise<boolean> {
+    try {
+      const token = await this.getAuthToken();
+      if (!token) return false;
+
+      const response = await fetch(`/api/cahier/weeks/${weekId}/restore`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      return response.ok;
+    } catch (e) {
+      console.warn('API fallback error restoring week:', e);
+      return false;
+    }
   }
 
   /**

@@ -17,6 +17,8 @@ export interface WorkWeek {
   end_date: string;   // start_date + 5 days
   is_closed: boolean;
   closed_at?: string;  // ISO timestamp
+  is_deleted?: boolean;
+  deleted_at?: string; // ISO timestamp
   created_at?: string;
   user_id?: string;
 }
