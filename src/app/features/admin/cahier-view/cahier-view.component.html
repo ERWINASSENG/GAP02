@@ -343,13 +343,14 @@
                   <table class="w-full text-center border-collapse border border-slate-300 dark:border-slate-700 text-xs sm:text-sm">
                     <thead>
                       <tr class="bg-slate-100 dark:bg-slate-950 border-b border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-center font-bold tracking-wider uppercase text-xs">
-                        <th class="px-2 py-2.5 sm:px-4 sm:py-3 border border-slate-300 dark:border-slate-700" colspan="7">
+                        <th class="px-2 py-2.5 sm:px-4 sm:py-3 border border-slate-300 dark:border-slate-700" colspan="8">
                           {{ getGroupTitle(group) }}
                         </th>
                       </tr>
                       <tr class="bg-slate-50 dark:bg-slate-950 text-slate-500 dark:text-slate-400 text-[11px] font-bold uppercase tracking-wider">
                         <th class="px-2 py-2 sm:px-4 sm:py-3 border border-slate-300 dark:border-slate-700 text-center">Date</th>
                         <th class="px-2 py-2 sm:px-4 sm:py-3 border border-slate-300 dark:border-slate-700 text-center whitespace-nowrap">DN / LTI / ISTI</th>
+                        <th class="px-2 py-2 sm:px-4 sm:py-3 border border-slate-300 dark:border-slate-700 text-center whitespace-nowrap">Matricule</th>
                         <th class="px-2 py-2 sm:px-4 sm:py-3 border border-slate-300 dark:border-slate-700 text-center">Produit / Désignation</th>
                         <th class="px-2 py-2 sm:px-4 sm:py-3 border border-slate-300 dark:border-slate-700 text-center">Quantité</th>
                         <th class="px-2 py-2 sm:px-4 sm:py-3 border border-slate-300 dark:border-slate-700 text-center">PU (FCFA)</th>
@@ -369,6 +370,11 @@
                             <!-- DN / LTI / ISTI -->
                             <td class="px-2 py-2 sm:px-4 sm:py-3 border border-slate-300 dark:border-slate-700 text-center font-mono whitespace-nowrap">
                               {{ item.dn || '—' }}
+                            </td>
+
+                            <!-- Matricule -->
+                            <td class="px-2 py-2 sm:px-4 sm:py-3 border border-slate-300 dark:border-slate-700 text-center font-mono whitespace-nowrap text-slate-600 dark:text-slate-300">
+                              {{ item.matricule || '—' }}
                             </td>
 
                             <!-- Produit -->
@@ -424,7 +430,7 @@
                     </tbody>
                     <tfoot>
                       <tr class="bg-slate-100 dark:bg-slate-950 font-bold text-slate-900 dark:text-white border-t-2 border-slate-300 dark:border-slate-700 text-xs">
-                        <td colspan="5" class="px-4 py-3 text-right uppercase tracking-wider">Total {{ getGroupTitle(group) }} :</td>
+                        <td colspan="6" class="px-4 py-3 text-right uppercase tracking-wider">Total {{ getGroupTitle(group) }} :</td>
                         <td class="px-4 py-3 text-center text-indigo-600 dark:text-indigo-400 text-sm font-extrabold whitespace-nowrap">{{ getGroupTotal(group) | number:'1.0-0' }} FCFA</td>
                         <td></td>
                       </tr>
@@ -512,6 +518,7 @@
                   </select>
                 }
                 <input type="text" formControlName="dnNumber" [placeholder]="getEditItemIdentifierLabel()" class="flex-1 min-w-[100px] p-1.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg">
+                <input type="text" formControlName="matricule" placeholder="Matricule" class="flex-1 min-w-[80px] p-1.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg">
                 <input type="text" formControlName="produit" placeholder="Produit" class="flex-1 min-w-[100px] p-1.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg">
                 <input type="number" formControlName="qte" (input)="recalculateItemMontant($index)" placeholder="Qté" class="w-20 p-1.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg">
                 <input type="number" formControlName="pu" (input)="recalculateItemMontant($index)" placeholder="Prix Unitaire" class="w-24 p-1.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg">

@@ -25,7 +25,7 @@ export class ExcelExportService {
       ['Détails / Notes', op.details || 'Aucun détail'],
       [],
       ['DÉTAILS DES PRODUITS & QUANTITÉS'],
-      ['Date', 'N° DN / Camion', 'Produit', 'Quantité', 'Prix Unitaire (FCFA)', 'Montant (FCFA)']
+      ['Date', 'N° DN / Camion', 'Matricule', 'Produit', 'Quantité', 'Prix Unitaire (FCFA)', 'Montant (FCFA)']
     ];
 
     if (op.items && op.items.length > 0) {
@@ -33,6 +33,7 @@ export class ExcelExportService {
         wsData.push([
           item.date,
           item.dn,
+          item.matricule || '',
           item.produit,
           item.qte,
           item.pu,
@@ -44,19 +45,20 @@ export class ExcelExportService {
       const totalQte = op.items.reduce((sum, item) => sum + (item.qte || 0), 0);
       const totalMontant = op.items.reduce((sum, item) => sum + (item.montant || 0), 0);
       wsData.push([]);
-      wsData.push(['TOTAL', '', '', totalQte, '', totalMontant]);
+      wsData.push(['TOTAL', '', '', '', totalQte, '', totalMontant]);
     } else {
       // Cas de repli si pas de sous-éléments (utilise les champs de l'opération parente)
       wsData.push([
         op.date,
         op.destination || 'N/A',
+        '',
         op.produit || 'N/A',
         op.quantite || 0,
         0,
         0
       ]);
       wsData.push([]);
-      wsData.push(['TOTAL', '', '', op.quantite || 0, '', 0]);
+      wsData.push(['TOTAL', '', '', '', op.quantite || 0, '', 0]);
     }
 
     const wb = XLSX.utils.book_new();
@@ -66,6 +68,7 @@ export class ExcelExportService {
     ws['!cols'] = [
       { wch: 15 }, // Date / Propriété
       { wch: 20 }, // N° DN / Valeur
+      { wch: 18 }, // Matricule
       { wch: 25 }, // Produit
       { wch: 15 }, // Quantité
       { wch: 20 }, // Prix Unitaire
@@ -90,6 +93,7 @@ export class ExcelExportService {
         'Date Opération',
         'Heure',
         'N° DN / Camion',
+        'Matricule',
         'Produit',
         'Quantité',
         'Prix Unitaire (FCFA)',
@@ -112,6 +116,7 @@ export class ExcelExportService {
             op.date,
             op.heure,
             item.dn,
+            item.matricule || '',
             item.produit,
             item.qte,
             item.pu,
@@ -130,6 +135,7 @@ export class ExcelExportService {
           op.date,
           op.heure,
           op.destination || 'N/A',
+          '',
           op.produit || 'N/A',
           op.quantite || 0,
           0,
@@ -146,6 +152,7 @@ export class ExcelExportService {
     wsData.push([]);
     wsData.push([
       'TOTAL GLOBAL',
+      '',
       '',
       '',
       '',
@@ -169,6 +176,7 @@ export class ExcelExportService {
       { wch: 15 }, // Date Opération
       { wch: 10 }, // Heure
       { wch: 20 }, // N° DN / Camion
+      { wch: 18 }, // Matricule
       { wch: 25 }, // Produit
       { wch: 15 }, // Quantité
       { wch: 18 }, // Prix Unitaire
@@ -207,6 +215,7 @@ export class ExcelExportService {
           'Heure',
           'Collaborateur',
           'N° DN / Camion',
+          'Matricule',
           'Produit',
           'Quantité',
           'Prix Unitaire (FCFA)',
@@ -227,6 +236,7 @@ export class ExcelExportService {
               op.heure,
               op.collaborateur || '',
               item.dn,
+              item.matricule || '',
               item.produit,
               item.qte,
               item.pu,
@@ -243,6 +253,7 @@ export class ExcelExportService {
             op.heure,
             op.collaborateur || '',
             op.destination || 'N/A',
+            '',
             op.produit || 'N/A',
             op.quantite || 0,
             0,
@@ -254,12 +265,12 @@ export class ExcelExportService {
       });
 
       wsData.push([]);
-      wsData.push(['TOTAL', '', '', '', '', '', totalQte, '', totalMontant, '']);
+      wsData.push(['TOTAL', '', '', '', '', '', '', totalQte, '', totalMontant, '']);
 
       const ws = XLSX.utils.aoa_to_sheet(wsData);
       ws['!cols'] = [
         { wch: 15 }, { wch: 15 }, { wch: 10 }, { wch: 20 }, { wch: 20 },
-        { wch: 25 }, { wch: 12 }, { wch: 18 }, { wch: 18 }, { wch: 35 }
+        { wch: 18 }, { wch: 25 }, { wch: 12 }, { wch: 18 }, { wch: 18 }, { wch: 35 }
       ];
 
       // Les noms d'onglet Excel sont limités à 31 caractères et doivent être uniques

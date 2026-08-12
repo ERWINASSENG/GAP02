@@ -21,6 +21,7 @@ interface MonthlyItemWithMeta {
   originalTime: string;
   dateStr: string;
   dn: string;
+  matricule: string;
   produit: string;
   qte: number;
   pu: number;
@@ -339,6 +340,7 @@ export class DocxExportService {
           originalTime: op.heure || '00:00',
           dateStr: this.formatFrenchDate(item.date),
           dn: item.dn || '-',
+          matricule: item.matricule || '-',
           produit: item.produit || op.produit || '-',
           qte: item.qte || 0,
           pu: item.pu || 0,
@@ -379,8 +381,8 @@ export class DocxExportService {
         widths = [20, 25, 18, 17, 20];
       } else if (showDn || isWagon) {
         const dnLabel = isWagon ? 'N° Wagon' : 'DN / LTI / ISTI';
-        headers = ['Date', dnLabel, 'Produits', 'QTE', 'PU', 'Montant'];
-        widths = [18, 20, 24, 12, 11, 15];
+        headers = ['Date', dnLabel, 'Matricule', 'Produits', 'QTE', 'PU', 'Montant'];
+        widths = [15, 18, 16, 21, 10, 8, 12];
       } else {
         headers = ['Date', 'Produits', 'QTE', 'PU', 'Montant'];
         widths = [20, 32, 16, 14, 18];
@@ -438,6 +440,14 @@ export class DocxExportService {
           }));
         }
 
+        // 2b. Matricule
+        if (showDn || isWagon) {
+          rowCells.push(this.createCell(item.matricule, {
+            size: 17,
+            widthPercent: widths[dataIndex++]
+          }));
+        }
+
         // 3. Produit (si applicable)
         if (group.type !== 'Chargement Camions' && !isWagon) {
           rowCells.push(this.createCell(item.produit, {
@@ -484,11 +494,11 @@ export class DocxExportService {
         footerCells.push(this.createCell("", { fill: "F1F5F9" }));
         footerCells.push(this.createCell(totalMontant.toLocaleString('fr-FR'), { bold: true, size: 18, color: accentColor, align: AlignmentType.RIGHT, fill: "F1F5F9" }));
       } else if (group.type === 'Chargement') {
-        const colspan = showDn ? 5 : 4;
+        const colspan = showDn ? 6 : 4;
         footerCells.push(this.createCell("TOTAL", { bold: true, size: 18, colspan, align: AlignmentType.RIGHT, fill: "F1F5F9" }));
         footerCells.push(this.createCell(totalMontant.toLocaleString('fr-FR'), { bold: true, size: 18, color: accentColor, align: AlignmentType.RIGHT, fill: "F1F5F9" }));
       } else if (isWagon) {
-        footerCells.push(this.createCell("TOTAL", { bold: true, size: 18, colspan: 3, align: AlignmentType.RIGHT, fill: "F1F5F9" }));
+        footerCells.push(this.createCell("TOTAL", { bold: true, size: 18, colspan: 4, align: AlignmentType.RIGHT, fill: "F1F5F9" }));
         footerCells.push(this.createCell(totalQte.toLocaleString('fr-FR'), { bold: true, size: 18, fill: "F1F5F9" }));
         footerCells.push(this.createCell("", { fill: "F1F5F9" }));
         footerCells.push(this.createCell(totalMontant.toLocaleString('fr-FR'), { bold: true, size: 18, color: accentColor, align: AlignmentType.RIGHT, fill: "F1F5F9" }));
@@ -589,6 +599,7 @@ export class DocxExportService {
           originalTime: op.heure || '00:00',
           dateStr: this.formatFrenchDate(item.date || op.date),
           dn: item.dn || '-',
+          matricule: item.matricule || '-',
           produit: item.produit || op.produit || '-',
           qte: item.qte || 0,
           pu: item.pu || 0,
@@ -598,6 +609,7 @@ export class DocxExportService {
           originalTime: op.heure || '00:00',
           dateStr: this.formatFrenchDate(op.date),
           dn: op.destination || '-',
+          matricule: '-',
           produit: op.produit || '-',
           qte: op.quantite || 0,
           pu: 0,
@@ -618,8 +630,8 @@ export class DocxExportService {
         widths = [20, 25, 18, 17, 20];
       } else if (showDn) {
         const dnLabel = isWagon ? 'N° Wagon' : 'DN / LTI / ISTI';
-        headers = ['Date', dnLabel, 'Produit', 'QTE', 'PU', 'Montant'];
-        widths = [18, 20, 24, 12, 11, 15];
+        headers = ['Date', dnLabel, 'Matricule', 'Produit', 'QTE', 'PU', 'Montant'];
+        widths = [15, 18, 16, 21, 10, 8, 12];
       } else {
         headers = ['Date', 'Produit', 'QTE', 'PU', 'Montant'];
         widths = [20, 32, 16, 14, 18];
@@ -645,6 +657,9 @@ export class DocxExportService {
         if (showDn || group.type === 'Chargement Camions') {
           rowCells.push(this.createCell(item.dn, { bold: true, size: 17, widthPercent: widths[dataIndex++] }));
         }
+        if (showDn) {
+          rowCells.push(this.createCell(item.matricule, { size: 17, widthPercent: widths[dataIndex++] }));
+        }
         if (group.type !== 'Chargement Camions') {
           rowCells.push(this.createCell(item.produit, { align: AlignmentType.LEFT, size: 17, widthPercent: widths[dataIndex++] }));
         }
@@ -663,7 +678,7 @@ export class DocxExportService {
         footerCells.push(this.createCell("", { fill: "F1F5F9" }));
         footerCells.push(this.createCell(totalMontant.toLocaleString('fr-FR'), { bold: true, size: 18, color: accentColor, align: AlignmentType.RIGHT, fill: "F1F5F9" }));
       } else if (showDn) {
-        footerCells.push(this.createCell("TOTAL", { bold: true, size: 18, colspan: 4, align: AlignmentType.RIGHT, fill: "F1F5F9" }));
+        footerCells.push(this.createCell("TOTAL", { bold: true, size: 18, colspan: 5, align: AlignmentType.RIGHT, fill: "F1F5F9" }));
         footerCells.push(this.createCell(totalMontant.toLocaleString('fr-FR'), { bold: true, size: 18, color: accentColor, align: AlignmentType.RIGHT, fill: "F1F5F9" }));
       } else {
         footerCells.push(this.createCell("TOTAL", { bold: true, size: 18, colspan: 3, align: AlignmentType.RIGHT, fill: "F1F5F9" }));
@@ -832,8 +847,8 @@ export class DocxExportService {
       widths = [20, 25, 18, 17, 20];
     } else if (showDn) {
       const dnLabel = isWagon ? 'N° Wagon' : 'DN / LTI / ISTI';
-      headers = ['Date', dnLabel, 'Produit', 'Qte (t)', 'PU (FCFA)', 'Montant (FCFA)'];
-      widths = [18, 20, 24, 12, 11, 15];
+      headers = ['Date', dnLabel, 'Matricule', 'Produit', 'Qte (t)', 'PU (FCFA)', 'Montant (FCFA)'];
+      widths = [15, 18, 16, 21, 10, 8, 12];
     } else {
       headers = ['Date', 'Produit', 'Qte (t)', 'PU (FCFA)', 'Montant (FCFA)'];
       widths = [20, 32, 16, 14, 18];
@@ -870,6 +885,14 @@ export class DocxExportService {
       if (showDn || op.type === 'Chargement Camions') {
         rowCells.push(this.createCell(item.dn || '-', {
           bold: true,
+          size: 17,
+          widthPercent: widths[dataIndex++]
+        }));
+      }
+
+      // 2b. Matricule
+      if (showDn) {
+        rowCells.push(this.createCell(item.matricule || '-', {
           size: 17,
           widthPercent: widths[dataIndex++]
         }));
@@ -920,11 +943,11 @@ export class DocxExportService {
       footerCells.push(this.createCell("", { fill: "F1F5F9" }));
       footerCells.push(this.createCell(totalMontant.toLocaleString('fr-FR'), { bold: true, size: 18, color: "4F46E5", align: AlignmentType.RIGHT, fill: "F1F5F9" }));
     } else if (op.type === 'Chargement') {
-      const colspan = showDn ? 5 : 4;
+      const colspan = showDn ? 6 : 4;
       footerCells.push(this.createCell("TOTAL", { bold: true, size: 18, colspan, align: AlignmentType.RIGHT, fill: "F1F5F9" }));
       footerCells.push(this.createCell(totalMontant.toLocaleString('fr-FR'), { bold: true, size: 18, color: "4F46E5", align: AlignmentType.RIGHT, fill: "F1F5F9" }));
     } else if (isWagon) {
-      footerCells.push(this.createCell("TOTAL", { bold: true, size: 18, colspan: 3, align: AlignmentType.RIGHT, fill: "F1F5F9" }));
+      footerCells.push(this.createCell("TOTAL", { bold: true, size: 18, colspan: 4, align: AlignmentType.RIGHT, fill: "F1F5F9" }));
       footerCells.push(this.createCell(totalQte.toLocaleString('fr-FR'), { bold: true, size: 18, fill: "F1F5F9" }));
       footerCells.push(this.createCell("", { fill: "F1F5F9" }));
       footerCells.push(this.createCell(totalMontant.toLocaleString('fr-FR'), { bold: true, size: 18, color: "4F46E5", align: AlignmentType.RIGHT, fill: "F1F5F9" }));

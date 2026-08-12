@@ -418,6 +418,7 @@ export class AdminCahierViewComponent {
         { nonNullable: true },
       ),
       dnNumber: new FormControl<string>(dnNumber, { nonNullable: true }),
+      matricule: new FormControl<string>(item?.matricule || '', { nonNullable: true }),
       produit: new FormControl<string>(item?.produit || '', {
         nonNullable: true,
       }),
@@ -490,6 +491,7 @@ export class AdminCahierViewComponent {
         id: v.id,
         date: v.date || val.date,
         dn: dnValue,
+        matricule: v.matricule || '',
         produit: v.produit || '',
         qte: Number(v.qte) || 0,
         pu: Number(v.pu) || 0,

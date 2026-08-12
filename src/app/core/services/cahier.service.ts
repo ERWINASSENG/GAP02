@@ -655,7 +655,11 @@ export class CahierService {
   /**
    * Validates if a date can be inserted for a specific site's week
    */
-  validateOperationDate(site: string, dateStr: string): { allowed: boolean; reason?: string; activeWeek?: WorkWeek } {
+  validateOperationDate(
+    site: string,
+    dateStr: string,
+    options?: { isRattrapage?: boolean; realDate?: string }
+  ): { allowed: boolean; reason?: string; activeWeek?: WorkWeek } {
     // 1. Check if the date falls inside a closed week
     const closedWeek = this._weeks().find(w => w.site === site && w.is_closed && dateStr >= w.start_date && dateStr <= w.end_date);
     if (closedWeek) {
@@ -668,6 +672,24 @@ export class CahierService {
     const active = this.getActiveWeek(site);
     if (!active) {
       return { allowed: true };
+    }
+
+    // Rattrapage d'une opération passée :
+    if (options?.isRattrapage && options.realDate) {
+      if (options.realDate > active.start_date) {
+        return {
+          allowed: false,
+          reason: `En mode rattrapage, la date réelle de l'opération (${options.realDate}) doit être antérieure au début de la semaine active (${active.start_date}).`
+        };
+      }
+      if (dateStr < active.start_date || dateStr > active.end_date) {
+        return {
+          allowed: false,
+          reason: `La date comptable d'enregistrement doit se situer dans la semaine active en cours (du ${active.start_date} au ${active.end_date}).`,
+          activeWeek: active
+        };
+      }
+      return { allowed: true, activeWeek: active };
     }
 
     if (dateStr < active.start_date) {
@@ -793,10 +815,13 @@ export class CahierService {
         isDraft: isDraftVal as boolean,
         user_id: dbOp['user_id'] as string,
         week_id: dbOp['week_id'] as string,
+        is_rattrapage: !!(dbOp['is_rattrapage'] || dbOp['israttrapage']),
+        real_date: (dbOp['real_date'] || dbOp['realdate'] || '') as string,
         items: Array.isArray(rawItems) ? (rawItems as Record<string, unknown>[]).map((item) => ({
           id: (item['id'] as string) || crypto.randomUUID(),
           date: (item['date'] as string) || (dbOp['date'] as string),
           dn: (item['dn'] as string) || '',
+          matricule: (item['matricule'] as string) || '',
           produit: (item['produit'] as string) || '',
           qte: Number(item['quantite'] ?? item['qte']) || 0,
           pu: Number(item['pu']) || 0,
@@ -821,7 +846,10 @@ export class CahierService {
     const id = opData.id || crypto.randomUUID();
 
     // 1. Validation of the date against work weeks
-    const validation = this.validateOperationDate(opData.site, opData.date);
+    const validation = this.validateOperationDate(opData.site, opData.date, {
+      isRattrapage: opData.is_rattrapage,
+      realDate: opData.real_date
+    });
     if (!validation.allowed) {
       throw new Error(validation.reason);
     }
@@ -875,7 +903,9 @@ export class CahierService {
           collaborateur: finalizedOp.collaborateur,
           isdraft: finalizedOp.isDraft,
           user_id: finalizedOp.user_id,
-          week_id: finalizedOp.week_id
+          week_id: finalizedOp.week_id,
+          is_rattrapage: finalizedOp.is_rattrapage || false,
+          real_date: finalizedOp.real_date || null
         }])
         .select()
         .single();
@@ -899,6 +929,7 @@ export class CahierService {
           operation_id: finalizedOp.id,
           date: item.date || finalizedOp.date || '',
           dn: item.dn || '',
+          matricule: item.matricule || '',
           produit: item.produit || '',
           quantite: Number(item.qte) || 0,
           pu: Number(item.pu) || 0,
@@ -1018,6 +1049,7 @@ export class CahierService {
           operation_id: draftOp.id,
           date: item.date || draftOp.date || '',
           dn: item.dn || '',
+          matricule: item.matricule || '',
           produit: item.produit || '',
           quantite: Number(item.qte) || 0,
           pu: Number(item.pu) || 0,
@@ -1147,6 +1179,7 @@ export class CahierService {
           operation_id: op.id,
           date: item.date || op.date || '',
           dn: item.dn || '',
+          matricule: item.matricule || '',
           produit: item.produit || '',
           quantite: Number(item.qte) || 0,
           pu: Number(item.pu) || 0,
