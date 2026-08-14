@@ -56,6 +56,9 @@ export interface Operation {
   items?: OperationItem[];
   is_rattrapage?: boolean;
   real_date?: string; // Date réelle de l'opération de rattrapage (ex: 2026-07-29)
+  status?: string;
+  prix_unitaire?: number;
+  montant_total?: number;
   // Temporary fields to maintain compatibility while refactoring
   quantite?: number;
   produit?: string;

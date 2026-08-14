@@ -7,6 +7,7 @@ import {ResetComponent} from './features/page/reset/reset.component';
 import {ProtectedLayout} from './features/protected/layout';
 import {DashboardComponent} from './features/dashboard/dashboard.component';
 import {CahierComponent} from './features/page/cahier/cahier.component';
+import {RapportComponent} from './features/page/rapport/rapport.component';
 import {AdminCahierViewComponent} from './features/admin/cahier-view/cahier-view.component';
 
 export const routes: Routes = [
@@ -39,6 +40,11 @@ export const routes: Routes = [
         path: 'cahier',
         component: CahierComponent,
         title: 'GAP APP - Cahier d\'Opérations'
+      },
+      {
+        path: 'rapports',
+        component: RapportComponent,
+        title: 'GAP APP - Rapport Quotidien'
       },
       {
         path: 'admin/view',

@@ -1,0 +1,534 @@
+<div class="space-y-6 max-w-6xl mx-auto pb-12" id="rapport-quotidien-wrapper">
+  
+  <!-- En-tête Global de la page -->
+  <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs" id="rapport-header">
+    <div>
+      <div class="flex items-center gap-2 mb-1">
+        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 border border-indigo-500/20">
+          Rapports Hebdomadaires & Quotidiens
+        </span>
+        <span class="text-xs font-medium text-slate-500 dark:text-slate-400">
+          Site: <strong>{{ selectedSite() }}</strong>
+        </span>
+      </div>
+      <h1 class="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
+        Gestion des Rapports
+      </h1>
+      <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">
+        Consultez et complétez les fiches de rapports quotidiens organisées par semaine.
+      </p>
+    </div>
+
+    <!-- Actions globales & Filtre de site -->
+    <div class="flex flex-wrap items-center gap-3">
+      <!-- Bouton "+ Nouveau Rapport" -->
+      <button
+        type="button"
+        (click)="startNewReport()"
+        class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold shadow-xs hover:shadow-md transition-all flex items-center gap-2 cursor-pointer"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+        </svg>
+        <span>Nouveau Rapport</span>
+      </button>
+
+      <div class="flex flex-col gap-1">
+        <label for="select-site-rapport" class="text-xs font-semibold text-slate-500 dark:text-slate-400">Sélectionner un site :</label>
+        <select
+          id="select-site-rapport"
+          [ngModel]="selectedSite()"
+          (ngModelChange)="onSiteChange($event)"
+          class="px-3.5 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        >
+          @for (site of availableSites(); track site) {
+            <option [value]="site">{{ site }}</option>
+          }
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Notification de Succès Global -->
+  @if (saveSuccess()) {
+    <div class="p-4 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 rounded-xl flex items-center gap-3 text-emerald-800 dark:text-emerald-300 text-sm animate-fade-in">
+      <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+      <span>{{ saveSuccessMessage() }}</span>
+    </div>
+  }
+
+  <!-- ========================================================================================= -->
+  <!-- VUE 1 : LISTE DES CARTES DES SEMAINES ("Rapport du [début] au [fin]") -->
+  <!-- ========================================================================================= -->
+  @if (viewMode() === 'weeks-list') {
+    <div class="space-y-4" id="view-weeks-list">
+      <div class="flex items-center justify-between">
+        <h2 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5 text-indigo-600">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
+          </svg>
+          Cartes des Semaines de Travail
+        </h2>
+        <span class="text-xs text-slate-500 font-medium">{{ weeksList().length }} semaine(s) disponible(s)</span>
+      </div>
+
+      @if (isLoading()) {
+        <div class="p-12 text-center text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">
+          <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-indigo-600 border-t-transparent mb-2"></div>
+          <p class="text-sm font-semibold">Chargement des semaines...</p>
+        </div>
+      } @else if (weeksList().length === 0) {
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-12 text-center space-y-3">
+          <div class="w-12 h-12 bg-slate-100 dark:bg-slate-800 text-slate-400 rounded-xl flex items-center justify-center mx-auto">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+            </svg>
+          </div>
+          <h3 class="text-base font-bold text-slate-800 dark:text-white">Aucune semaine enregistrée</h3>
+          <p class="text-xs text-slate-500 dark:text-slate-400">
+            Veuillez d'abord ouvrir une semaine dans le module Cahier pour <strong>{{ selectedSite() }}</strong>.
+          </p>
+        </div>
+      } @else {
+        <!-- Grille des Cartes Semaines -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          @for (w of weeksList(); track w.id) {
+            <div
+              role="button"
+              tabindex="0"
+              (click)="openWeekDetail(w)"
+              (keyup.enter)="openWeekDetail(w)"
+              class="group relative bg-white dark:bg-slate-900 hover:bg-slate-50/80 dark:hover:bg-slate-800/80 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-xs hover:shadow-md transition-all cursor-pointer flex flex-col justify-between space-y-4"
+            >
+              <div class="space-y-3">
+                <div class="flex items-center justify-between">
+                  <span class="px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800">
+                    {{ w.site }}
+                  </span>
+                  @if (!w.is_closed) {
+                    <span class="flex items-center gap-1 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
+                      <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                      En cours
+                    </span>
+                  } @else {
+                    <span class="text-[11px] font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">
+                      Clôturée
+                    </span>
+                  }
+                </div>
+
+                <!-- Titre demandé : Rapport du [début] au [fin] -->
+                <div>
+                  <h3 class="text-lg font-black text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                    Rapport du {{ w.start_date | date:'dd/MM/yyyy' }} au {{ w.end_date | date:'dd/MM/yyyy' }}
+                  </h3>
+                  <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                    Cliquez pour ouvrir la fiche hebdomadaire et saisir les rapports journaliers.
+                  </p>
+                </div>
+              </div>
+
+              <!-- Footer de la carte -->
+              <div class="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs font-semibold text-indigo-600 dark:text-indigo-400">
+                <span>Consulter / Saisir les jours</span>
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 transform group-hover:translate-x-1 transition-transform">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                </svg>
+              </div>
+            </div>
+          }
+        </div>
+      }
+    </div>
+  }
+
+  <!-- ========================================================================================= -->
+  <!-- VUE 2 : DÉTAIL D'UNE SEMAINE (Grille des 7 jours Lundi à Dimanche) -->
+  <!-- ========================================================================================= -->
+  @if (viewMode() === 'week-detail' && selectedWeek()) {
+    <div class="space-y-6 animate-fade-in" id="view-week-detail">
+      
+      <!-- Bouton de retour -->
+      <div class="flex items-center justify-between">
+        <button
+          type="button"
+          (click)="backToWeeksList()"
+          class="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+          </svg>
+          <span>← Retour aux cartes de semaines</span>
+        </button>
+
+        <span class="text-xs font-bold text-slate-500">
+          {{ filledDaysCount() }} / 7 jours renseignés
+        </span>
+      </div>
+
+      <!-- Bandeau résumé de la Semaine -->
+      <div class="bg-gradient-to-r from-indigo-900 to-slate-900 text-white p-6 rounded-2xl shadow-md flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <span class="text-xs font-bold text-indigo-300 uppercase tracking-wider">Fiche Hebdomadaire</span>
+          <h2 class="text-2xl font-black text-white tracking-tight mt-0.5">
+            Rapport du {{ selectedWeek()?.start_date | date:'dd/MM/yyyy' }} au {{ selectedWeek()?.end_date | date:'dd/MM/yyyy' }}
+          </h2>
+          <p class="text-xs text-indigo-200 mt-1">
+            Site : <strong>{{ selectedSite() }}</strong>
+          </p>
+        </div>
+
+        <div class="text-left md:text-right">
+          <span class="text-xs font-bold text-indigo-300 uppercase tracking-wider">Cumul Semaine (FCFA)</span>
+          <div class="text-3xl font-black text-white">
+            {{ totalWeekFCFA() | number:'1.0-2' }} FCFA
+          </div>
+        </div>
+      </div>
+
+      <!-- Grille des 7 jours de la semaine -->
+      <div class="space-y-3">
+        <h3 class="text-sm font-bold text-slate-800 dark:text-slate-200">
+          Sélectionnez un jour pour ajouter ou modifier son rapport :
+        </h3>
+
+        @if (isLoading()) {
+          <div class="p-12 text-center text-slate-500 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">
+            <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-indigo-600 border-t-transparent mb-2"></div>
+            <p class="text-sm font-semibold">Chargement des rapports de la semaine...</p>
+          </div>
+        } @else {
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            @for (day of weekDaysSummaries(); track day.date) {
+              <div
+                role="button"
+                tabindex="0"
+                (click)="editDayReport(day.date)"
+                (keyup.enter)="editDayReport(day.date)"
+                class="bg-white dark:bg-slate-900 hover:border-indigo-500 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-xs hover:shadow-md transition-all cursor-pointer flex flex-col justify-between space-y-3"
+              >
+                <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
+                  <div>
+                    <span class="text-xs font-black uppercase text-indigo-600 dark:text-indigo-400 tracking-wider">
+                      {{ day.dayName }}
+                    </span>
+                    <h4 class="text-sm font-bold text-slate-900 dark:text-white">
+                      {{ day.formattedDate }}
+                    </h4>
+                  </div>
+
+                  @if (day.isFilled) {
+                    <span class="px-2 py-0.5 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 text-[11px] font-bold rounded-full border border-emerald-200 dark:border-emerald-800">
+                      ✓ Renseigné
+                    </span>
+                  } @else {
+                    <span class="px-2 py-0.5 bg-slate-100 text-slate-500 dark:bg-slate-800 text-[11px] font-medium rounded-full">
+                      Non renseigné
+                    </span>
+                  }
+                </div>
+
+                @if (day.isFilled && day.report) {
+                  <div class="space-y-1 py-1">
+                    <div class="flex justify-between text-xs text-slate-600 dark:text-slate-300">
+                      <span>Total Journée :</span>
+                      <strong class="font-bold text-slate-900 dark:text-white">
+                        {{ day.report.total_general | number:'1.0-2' }} FCFA
+                      </strong>
+                    </div>
+                    @if (day.report.effectif_declare) {
+                      <div class="flex justify-between text-[11px] text-slate-500">
+                        <span>Effectif :</span>
+                        <span>{{ day.report.effectif_declare }} pers.</span>
+                      </div>
+                    }
+                  </div>
+                } @else {
+                  <p class="text-xs text-slate-400 italic py-2">
+                    Aucune donnée saisie pour ce jour. Cliquez pour ouvrir la fiche.
+                  </p>
+                }
+
+                <div class="pt-2 flex items-center justify-end text-xs font-bold text-indigo-600 dark:text-indigo-400">
+                  <span>{{ day.isFilled ? 'Modifier' : '+ Saisir la journée' }} →</span>
+                </div>
+              </div>
+            }
+          </div>
+        }
+      </div>
+
+    </div>
+  }
+
+  <!-- ========================================================================================= -->
+  <!-- VUE 3 : FORMULAIRE DE SAISIE DU RAPPORT QUOTIDIEN -->
+  <!-- ========================================================================================= -->
+  @if (viewMode() === 'day-form') {
+    <div class="space-y-6 animate-fade-in" id="view-day-form">
+      
+      <!-- Bouton Retour au détail semaine -->
+      <div class="flex items-center justify-between">
+        <button
+          type="button"
+          (click)="backToWeekDetail()"
+          class="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+          </svg>
+          <span>← Retour au rapport de la semaine</span>
+        </button>
+
+        <button
+          type="button"
+          (click)="recalculateFromCahier()"
+          title="Ré-importer les montants depuis les tableaux du cahier"
+          class="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950 dark:hover:bg-indigo-900 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+          </svg>
+          <span>Ré-importer les montants du Cahier</span>
+        </button>
+      </div>
+
+      <!-- Carte de saisie du rapport -->
+      <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm p-6 sm:p-8 space-y-8" id="rapport-card">
+        
+        <!-- En-tête de la journée -->
+        <div class="border-b border-slate-200 dark:border-slate-800 pb-4">
+          <span class="text-xs uppercase font-bold text-indigo-600 dark:text-indigo-400 tracking-wider">Fiche de Rapport Quotidien</span>
+          <h2 class="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight mt-0.5">
+            {{ formattedDateHeader() }}
+          </h2>
+          <p class="text-xs text-slate-500 mt-0.5">Site : <strong>{{ selectedSite() }}</strong></p>
+        </div>
+
+        <!-- Section Effectif & Noms -->
+        <div class="space-y-4 bg-slate-50 dark:bg-slate-800/50 p-5 rounded-xl border border-slate-200 dark:border-slate-700/60">
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <!-- Effectif -->
+            <div class="md:col-span-1">
+              <label for="input-effectif" class="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1">
+                Effectif : <span class="text-slate-400 font-normal">(Saisie manuelle)</span>
+              </label>
+              <input
+                id="input-effectif"
+                type="number"
+                min="0"
+                [ngModel]="effectifDeclare()"
+                (ngModelChange)="effectifDeclare.set($event); onValueManualChange()"
+                placeholder="Ex: 12"
+                class="w-full px-3.5 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-lg font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+
+            <!-- Noms -->
+            <div class="md:col-span-2">
+              <label for="input-noms" class="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1">
+                Noms des présents : <span class="text-slate-400 font-normal">(Saisie manuelle)</span>
+              </label>
+              <textarea
+                id="input-noms"
+                rows="2"
+                [ngModel]="presentsNoms()"
+                (ngModelChange)="presentsNoms.set($event); onValueManualChange()"
+                placeholder="Ex: Kouassi, Diallo, Konan, Marc..."
+                class="w-full px-3.5 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 leading-snug"
+              ></textarea>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section Montants de la journée -->
+        <div class="space-y-4">
+          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            Montants de la Journée en FCFA (Pré-calculés depuis le Cahier)
+          </h3>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <!-- Chargement farine -->
+            <div class="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-200 dark:border-slate-700/60 flex items-center justify-between">
+              <div>
+                <span class="block text-sm font-bold text-slate-800 dark:text-slate-200">Chargement farine</span>
+                <span class="text-xs text-slate-400">Montant FCFA</span>
+              </div>
+              <div class="w-36">
+                <input
+                  type="number"
+                  min="0"
+                  [ngModel]="totalChargements()"
+                  (ngModelChange)="totalChargements.set($event); onValueManualChange()"
+                  class="w-full text-right font-black text-lg text-slate-900 dark:text-white bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+            </div>
+
+            <!-- Transfert farine -->
+            <div class="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-200 dark:border-slate-700/60 flex items-center justify-between">
+              <div>
+                <span class="block text-sm font-bold text-slate-800 dark:text-slate-200">Transfert farine</span>
+                <span class="text-xs text-slate-400">Montant FCFA</span>
+              </div>
+              <div class="w-36">
+                <input
+                  type="number"
+                  min="0"
+                  [ngModel]="totalTransferts()"
+                  (ngModelChange)="totalTransferts.set($event); onValueManualChange()"
+                  class="w-full text-right font-black text-lg text-slate-900 dark:text-white bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+            </div>
+
+            <!-- Déchargement farine -->
+            <div class="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-200 dark:border-slate-700/60 flex items-center justify-between">
+              <div>
+                <span class="block text-sm font-bold text-slate-800 dark:text-slate-200">Déchargement farine</span>
+                <span class="text-xs text-slate-400">Montant FCFA</span>
+              </div>
+              <div class="w-36">
+                <input
+                  type="number"
+                  min="0"
+                  [ngModel]="totalDechargements()"
+                  (ngModelChange)="totalDechargements.set($event); onValueManualChange()"
+                  class="w-full text-right font-black text-lg text-slate-900 dark:text-white bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+            </div>
+
+            <!-- Son -->
+            <div class="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-200 dark:border-slate-700/60 flex items-center justify-between">
+              <div>
+                <span class="block text-sm font-bold text-slate-800 dark:text-slate-200">Son</span>
+                <span class="text-xs text-slate-400">Montant FCFA</span>
+              </div>
+              <div class="w-36">
+                <input
+                  type="number"
+                  min="0"
+                  [ngModel]="totalSon()"
+                  (ngModelChange)="totalSon.set($event); onValueManualChange()"
+                  class="w-full text-right font-black text-lg text-slate-900 dark:text-white bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section Éléments supplémentaires -->
+        <div class="space-y-3 pt-2 border-t border-slate-100 dark:border-slate-800">
+          <div class="flex items-center justify-between">
+            <div>
+              <h3 class="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                Autres Éléments Personnalisés
+              </h3>
+              <p class="text-xs text-slate-400">Ajoutez manuellement d'autres montants.</p>
+            </div>
+            <button
+              type="button"
+              (click)="addCustomItem()"
+              class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3.5 h-3.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+              </svg>
+              <span>Ajouter un élément</span>
+            </button>
+          </div>
+
+          @if (customItems().length > 0) {
+            <div class="space-y-2">
+              @for (item of customItems(); track $index) {
+                <div class="flex items-center gap-2 bg-slate-50 dark:bg-slate-800/60 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700">
+                  <input
+                    type="text"
+                    [ngModel]="item.label"
+                    (ngModelChange)="updateCustomItemLabel($index, $event)"
+                    placeholder="Ex: Prime transport..."
+                    class="flex-1 px-3 py-1.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                  <div class="w-36">
+                    <input
+                      type="number"
+                      [ngModel]="item.amount"
+                      (ngModelChange)="updateCustomItemAmount($index, $event)"
+                      placeholder="Montant FCFA"
+                      class="w-full text-right px-3 py-1.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    (click)="removeCustomItem($index)"
+                    class="p-1.5 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition-colors cursor-pointer"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              }
+            </div>
+          }
+        </div>
+
+        <!-- Section Remarques -->
+        <div class="space-y-1 pt-2 border-t border-slate-100 dark:border-slate-800">
+          <label for="input-remarques" class="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+            Remarques & Incidents du Jour :
+          </label>
+          <textarea
+            id="input-remarques"
+            rows="2"
+            [ngModel]="remarques()"
+            (ngModelChange)="remarques.set($event); onValueManualChange()"
+            placeholder="Précisions éventuelles..."
+            class="w-full px-3.5 py-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-300 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          ></textarea>
+        </div>
+
+        <!-- Total & Action Enregistrer -->
+        <div class="pt-6 border-t border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4 bg-slate-900 text-white p-6 rounded-2xl shadow-md">
+          <div>
+            <span class="text-xs uppercase font-bold text-indigo-300 tracking-wider">Montant total recalculé</span>
+            <div class="text-xl font-bold tracking-tight text-white mt-0.5">
+              TOTAL DE LA JOURNÉE
+            </div>
+          </div>
+
+          <div class="flex items-center gap-6">
+            <div class="text-3xl sm:text-4xl font-black text-white tracking-tight">
+              {{ computedTotalGeneral() | number:'1.0-2' }} FCFA
+            </div>
+
+            <button
+              type="button"
+              (click)="onSaveReport()"
+              [disabled]="isSaving()"
+              class="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-bold shadow-md hover:shadow-lg transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              @if (isSaving()) {
+                <svg class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span>Enregistrement...</span>
+              } @else {
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                </svg>
+                <span>Enregistrer & Rediriger</span>
+              }
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  }
+
+</div>
