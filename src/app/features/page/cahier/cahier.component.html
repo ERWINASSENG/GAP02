@@ -975,8 +975,8 @@
             @for (weekGroup of detailedWeekGroups(); track weekGroup.label) {
               <div class="w-full space-y-3" id="week-group-{{$index}}">
                 
-                <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
-                  <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-xs font-bold text-indigo-700 dark:text-indigo-400 shadow-2xs">
+                <div class="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 border-b border-slate-200 dark:border-slate-800 pb-2">
+                  <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-xs font-bold text-indigo-700 dark:text-indigo-400 shadow-2xs whitespace-nowrap">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-3.5 h-3.5 shrink-0">
                       <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
                     </svg>
@@ -1097,13 +1097,6 @@
         } @else {
           <!-- Organisation des données par Tableaux distincts de Types d'Opérations -->
           <div class="space-y-8 pb-12" id="detailed-types-wrapper">
-            <div class="p-3 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 rounded-xl flex items-center gap-2 text-xs text-blue-800 dark:text-blue-300">
-              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 shrink-0 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <span>Affichage des opérations de la <strong>semaine en cours</strong> uniquement. Les semaines clôturées sont consultables dans la vue « Semaines de travail (6j) ».</span>
-            </div>
-
           @for (group of detailedTypeGroups(); track group.type) {
             @let isWagon = group.type.toLowerCase().includes('wagon');
             @let isBleWagon = group.type === 'Chargement Wagon Blé' || (isWagon && group.product === 'Blé');
