@@ -168,6 +168,17 @@ export class CahierService {
   }
 
   /**
+   * Recharges la liste des semaines depuis le serveur / Supabase
+   */
+  async reloadWeeks() {
+    const user = this.authService.currentUser();
+    await this.loadInitialWeeks(user?.id);
+    if (user?.role === 'admin') {
+      await this.loadAllWeeksForAdmin();
+    }
+  }
+
+  /**
    * Loads initial weeks from Supabase or Server API
    */
   private async loadInitialWeeks(userId?: string) {

@@ -31,15 +31,18 @@ export class RapportComponent implements OnInit {
   readonly authService = inject(AuthService);
 
   // Tous les sites possibles
-  readonly ALL_SITES = ['Port-Bouët', 'Vridi', 'San Pédro'];
+  readonly DEFAULT_SITES = ['Port-Bouët', 'Vridi', 'San Pédro', 'SCMC'];
 
   // Sites autorisés/disponibles pour l'utilisateur connecté
   readonly availableSites = computed<string[]>(() => {
     const user = this.authService.currentUser();
-    if (!user) return this.ALL_SITES;
+    const weeksSites = Array.from(new Set(this.cahierService.weeks().map(w => w.site).filter(Boolean)));
+    const allKnownSites = Array.from(new Set([...this.DEFAULT_SITES, ...weeksSites]));
+
+    if (!user) return allKnownSites;
 
     if (user.role === 'admin' || user.role === 'manager') {
-      return this.ALL_SITES;
+      return allKnownSites;
     }
 
     if (user.assignedSiteNames && user.assignedSiteNames.length > 0) {
@@ -50,7 +53,7 @@ export class RapportComponent implements OnInit {
       return [user.assignedSiteName];
     }
 
-    return this.ALL_SITES;
+    return allKnownSites;
   });
 
   // Mode de vue actif
@@ -177,6 +180,7 @@ export class RapportComponent implements OnInit {
   async loadWeeksList(): Promise<void> {
     this.isLoading.set(true);
     try {
+      await this.cahierService.reloadWeeks();
       const weeks = this.reportService.getAllWeeksForSite(this.selectedSite());
       this.weeksList.set(weeks);
     } catch (e) {

@@ -750,7 +750,7 @@ export class CahierComponent implements OnInit {
         items: rawItems.map(item => ({
           date: item.date || val.date || '',
           dn: item.dn || `${item.dnPrefix || 'DN'} ${item.dnNumber || ''}`.toUpperCase().trim(),
-          matricule: (item as any).matricule || '',
+          matricule: (item as Record<string, unknown>)['matricule'] ? String((item as Record<string, unknown>)['matricule']) : '',
           produit: item.produit || '',
           qte: item.qte !== null ? Number(item.qte) : 0,
           pu: item.pu !== null ? Number(item.pu) : 0,
@@ -975,7 +975,7 @@ export class CahierComponent implements OnInit {
         items: rawItems.map(item => ({
           date: item.date || '',
           dn: item.dn || `${item.dnPrefix || 'DN'} ${item.dnNumber || ''}`.toUpperCase().trim(),
-          matricule: (item as any).matricule || '',
+          matricule: (item as Record<string, unknown>)['matricule'] ? String((item as Record<string, unknown>)['matricule']) : '',
           produit: item.produit || '',
           qte: Number(item.qte) || 0,
           pu: Number(item.pu) || 0,
