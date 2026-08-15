@@ -29,27 +29,43 @@ export class ReportService {
    * Trouve la semaine active pour un site.
    */
   getWeekForSite(site: string): WorkWeek | null {
-    const allWeeks = [...this.cahierService.weeks(), ...this.cahierService.adminWeeks()];
-    const normalizedSite = (site || '').trim().toLowerCase();
-    const siteWeeks = allWeeks.filter(w => (w.site || '').trim().toLowerCase() === normalizedSite && !w.is_deleted);
+    const siteWeeks = this.getAllWeeksForSite(site);
     if (siteWeeks.length === 0) return null;
 
     const openWeek = siteWeeks.find(w => !w.is_closed);
     if (openWeek) return openWeek;
 
-    siteWeeks.sort((a, b) => b.start_date.localeCompare(a.start_date));
     return siteWeeks[0];
   }
 
   /**
    * Récupère toutes les semaines pour un site (pour l'affichage en cartes).
+   * Assure une déduplication stricte par ID et par couple (site, start_date).
    */
   getAllWeeksForSite(site: string): WorkWeek[] {
     const allWeeks = [...this.cahierService.weeks(), ...this.cahierService.adminWeeks()];
     const normalizedSite = (site || '').trim().toLowerCase();
-    return allWeeks
-      .filter(w => (w.site || '').trim().toLowerCase() === normalizedSite && !w.is_deleted)
-      .sort((a, b) => b.start_date.localeCompare(a.start_date));
+    
+    // Déduplication par ID et par clé composite (site, start_date)
+    const seenIds = new Set<string>();
+    const seenSiteDates = new Set<string>();
+    const uniqueWeeks: WorkWeek[] = [];
+
+    for (const w of allWeeks) {
+      if (!w || w.is_deleted) continue;
+      const wSite = (w.site || '').trim().toLowerCase();
+      if (wSite !== normalizedSite) continue;
+
+      const weekKey = `${wSite}_${w.start_date}`;
+      if (w.id && seenIds.has(w.id)) continue;
+      if (seenSiteDates.has(weekKey)) continue;
+
+      if (w.id) seenIds.add(w.id);
+      seenSiteDates.add(weekKey);
+      uniqueWeeks.push(w);
+    }
+
+    return uniqueWeeks.sort((a, b) => b.start_date.localeCompare(a.start_date));
   }
 
   /**
@@ -157,12 +173,19 @@ export class ReportService {
     let operationsToProcess: Operation[] = [];
 
     const localOps = [...this.cahierService.operations(), ...this.cahierService.adminOperations()];
+    const seenOpIds = new Set<string>();
     const filteredLocal = localOps.filter(op => {
+      if (!op || op.status === 'ANNULE' || op.status === 'SUPPRIME') return false;
       const opSite = this.normalizeText(op.site);
       const rawOpDate = op.is_rattrapage && op.real_date ? op.real_date : op.date;
       const opDate = this.normalizeDateStr(rawOpDate);
-      if (op.status === 'ANNULE' || op.status === 'SUPPRIME') return false;
-      return opSite === targetSite && opDate === targetDate;
+      if (opSite !== targetSite || opDate !== targetDate) return false;
+      
+      if (op.id) {
+        if (seenOpIds.has(op.id)) return false;
+        seenOpIds.add(op.id);
+      }
+      return true;
     });
 
     if (filteredLocal.length > 0) {

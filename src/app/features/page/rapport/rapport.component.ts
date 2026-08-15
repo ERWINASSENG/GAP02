@@ -30,16 +30,16 @@ export class RapportComponent implements OnInit {
   private readonly reportService = inject(ReportService);
   readonly authService = inject(AuthService);
 
-  // Tous les sites possibles
-  readonly DEFAULT_SITES = ['Port-Bouët', 'Vridi', 'San Pédro', 'SCMC'];
+  // Sites de production réels
+  readonly DEFAULT_SITES = ['SCMC', 'TUSCANI', 'AFISA', 'AUTRE'];
 
   // Sites autorisés/disponibles pour l'utilisateur connecté
   readonly availableSites = computed<string[]>(() => {
     const user = this.authService.currentUser();
     const weeksSites = Array.from(new Set(this.cahierService.weeks().map(w => w.site).filter(Boolean)));
-    const allKnownSites = Array.from(new Set([...this.DEFAULT_SITES, ...weeksSites]));
+    const allKnownSites = Array.from(new Set([...this.DEFAULT_SITES, ...weeksSites])).sort();
 
-    if (!user) return allKnownSites;
+    if (!user) return [];
 
     if (user.role === 'admin' || user.role === 'manager') {
       return allKnownSites;
@@ -53,14 +53,14 @@ export class RapportComponent implements OnInit {
       return [user.assignedSiteName];
     }
 
-    return allKnownSites;
+    return [];
   });
 
   // Mode de vue actif
   readonly viewMode = signal<ReportViewMode>('weeks-list');
 
   // Filtre de site
-  readonly selectedSite = signal<string>('Port-Bouët');
+  readonly selectedSite = signal<string>('SCMC');
 
   // Semaines trouvées pour le site
   readonly weeksList = signal<WorkWeek[]>([]);
