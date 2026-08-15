@@ -411,7 +411,7 @@ export class AdminCahierViewComponent {
     const prefix = prefixMatch ? prefixMatch[1].toUpperCase() : 'DN';
     const dnNumber = initialDn.replace(/^(DN|LTI|ISTI)\s*/i, '').trim();
 
-    return new FormGroup({
+    const itemGroup = new FormGroup({
       id: new FormControl<string | undefined>(item?.id),
       date: new FormControl<string>(
         item?.date || this.editForm.get('date')?.value || '',
@@ -422,7 +422,7 @@ export class AdminCahierViewComponent {
         { nonNullable: true },
       ),
       dnNumber: new FormControl<string>(dnNumber, { nonNullable: true }),
-      matricule: new FormControl<string>(item?.matricule || '', { nonNullable: true }),
+      matricule: new FormControl<string>((item?.matricule || '').toUpperCase().replace(/\s+/g, ''), { nonNullable: true }),
       produit: new FormControl<string>(item?.produit || '', {
         nonNullable: true,
       }),
@@ -432,6 +432,17 @@ export class AdminCahierViewComponent {
         nonNullable: true,
       }),
     });
+
+    itemGroup.controls.matricule.valueChanges.subscribe((val: string | null) => {
+      if (val) {
+        const formatted = val.toUpperCase().replace(/\s+/g, '');
+        if (formatted !== val) {
+          itemGroup.controls.matricule.setValue(formatted, { emitEvent: false });
+        }
+      }
+    });
+
+    return itemGroup;
   }
 
   openEditModal(op: Operation) {

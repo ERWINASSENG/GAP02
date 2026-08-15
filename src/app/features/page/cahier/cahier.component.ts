@@ -347,11 +347,20 @@ export class CahierComponent implements OnInit {
       dnPrefix: new FormControl<string>(prefix, { validators: (isDnRequired && currentType === 'Chargement') ? [Validators.required] : [], nonNullable: true }),
       dnNumber: new FormControl<string>(num, { validators: isDnRequired ? [Validators.required] : [], nonNullable: true }),
       dn: new FormControl<string>(dn || (isPrefixRequired ? `${prefix} ${num}`.toUpperCase().trim() : num.toUpperCase().trim()), { validators: isDnRequired ? [Validators.required] : [], nonNullable: true }),
-      matricule: new FormControl<string>(matricule, { nonNullable: true }),
+      matricule: new FormControl<string>((matricule || '').toUpperCase().replace(/\s+/g, ''), { nonNullable: true }),
       produit: new FormControl<string>(produit, { validators: isProduitRequired ? [Validators.required] : [], nonNullable: true }),
       qte: new FormControl<number | null>(qte, { validators: [Validators.required, Validators.min(0)] }),
       pu: new FormControl<number | null>(pu, { validators: [Validators.required, Validators.min(0)] }),
       montant: new FormControl<number | null>(montant, { validators: [Validators.required, Validators.min(0)] })
+    });
+
+    group.controls.matricule.valueChanges.subscribe(val => {
+      if (val) {
+        const formatted = val.toUpperCase().replace(/\s+/g, '');
+        if (formatted !== val) {
+          group.controls.matricule.setValue(formatted, { emitEvent: false });
+        }
+      }
     });
 
     const updateProductSuggestions = (value: string) => {
