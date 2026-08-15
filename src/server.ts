@@ -368,10 +368,22 @@ app.get('/api/cahier/weeks', async (req, res) => {
       return;
     }
 
-    const { data, error } = await supabaseAdmin
-      .from('cahier_weeks')
-      .select('*')
-      .order('start_date', { ascending: false });
+    const role = user.app_metadata?.['role'];
+    const assignedSiteName = user.app_metadata?.['assignedSiteName'];
+    const assignedSiteNames: string[] = Array.isArray(user.app_metadata?.['assignedSiteNames'])
+      ? user.app_metadata['assignedSiteNames']
+      : [];
+
+    let query = supabaseAdmin.from('cahier_weeks').select('*').order('start_date', { ascending: false });
+
+    if (role !== 'admin') {
+      const allowedSites = Array.from(new Set(['AUTRE', assignedSiteName, ...assignedSiteNames].filter(Boolean))) as string[];
+      if (allowedSites.length > 0) {
+        query = query.in('site', allowedSites);
+      }
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       res.status(400).json({ error: error.message });
@@ -416,6 +428,19 @@ app.post('/api/cahier/weeks', async (req, res) => {
       return;
     }
 
+    const role = user.app_metadata?.['role'];
+    const assignedSiteName = user.app_metadata?.['assignedSiteName'];
+    const assignedSiteNames: string[] = Array.isArray(user.app_metadata?.['assignedSiteNames'])
+      ? user.app_metadata['assignedSiteNames']
+      : [];
+
+    function userCanAccessSite(site: string): boolean {
+      return role === 'admin'
+        || site === 'AUTRE'
+        || site === assignedSiteName
+        || assignedSiteNames.includes(site);
+    }
+
     const { id, site, start_date, end_date, is_closed, user_id } = req.body;
     if (!site || !start_date || !end_date) {
       res.status(400).json({ error: 'Champs obligatoires manquants (site, start_date, end_date).' });
@@ -423,6 +448,12 @@ app.post('/api/cahier/weeks', async (req, res) => {
     }
 
     const cleanSite = (site as string).trim();
+
+    if (!userCanAccessSite(cleanSite)) {
+      res.status(403).json({ error: 'Accès refusé à ce site.' });
+      return;
+    }
+
     const weekPayload = {
       id: id || crypto.randomUUID(),
       site: cleanSite,
@@ -494,8 +525,31 @@ app.patch('/api/cahier/weeks/:id', async (req, res) => {
       return;
     }
 
+    const role = user.app_metadata?.['role'];
+    const assignedSiteName = user.app_metadata?.['assignedSiteName'];
+    const assignedSiteNames: string[] = Array.isArray(user.app_metadata?.['assignedSiteNames'])
+      ? user.app_metadata['assignedSiteNames']
+      : [];
+
+    function userCanAccessSite(site: string): boolean {
+      return role === 'admin'
+        || site === 'AUTRE'
+        || site === assignedSiteName
+        || assignedSiteNames.includes(site);
+    }
+
     const weekId = req.params.id;
-    const updates = req.body;
+
+    const { data: existingWeek } = await supabaseAdmin.from('cahier_weeks').select('site').eq('id', weekId).maybeSingle();
+    if (!existingWeek || !userCanAccessSite(existingWeek.site)) {
+      res.status(403).json({ error: 'Accès refusé à cette semaine.' });
+      return;
+    }
+
+    const allowedFields = ['site', 'start_date', 'end_date', 'is_closed', 'closed_at'];
+    const updates = Object.fromEntries(
+      Object.entries(req.body || {}).filter(([key]) => allowedFields.includes(key))
+    );
 
     const { data, error } = await supabaseAdmin
       .from('cahier_weeks')
@@ -543,6 +597,12 @@ app.delete('/api/cahier/weeks/:id', async (req, res) => {
     const user = authData?.user;
     if (authError || !user) {
       res.status(401).json({ error: 'Utilisateur non authentifié.' });
+      return;
+    }
+
+    const role = user.app_metadata?.['role'];
+    if (role !== 'admin') {
+      res.status(403).json({ error: 'Seul un administrateur peut supprimer une semaine.' });
       return;
     }
 
@@ -619,6 +679,12 @@ app.post('/api/cahier/weeks/:id/restore', async (req, res) => {
     const user = authData?.user;
     if (authError || !user) {
       res.status(401).json({ error: 'Utilisateur non authentifié.' });
+      return;
+    }
+
+    const role = user.app_metadata?.['role'];
+    if (role !== 'admin') {
+      res.status(403).json({ error: 'Seul un administrateur peut restaurer une semaine.' });
       return;
     }
 
