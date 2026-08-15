@@ -551,6 +551,11 @@ app.patch('/api/cahier/weeks/:id', async (req, res) => {
       Object.entries(req.body || {}).filter(([key]) => allowedFields.includes(key))
     );
 
+    if (updates['site'] && typeof updates['site'] === 'string' && !userCanAccessSite(updates['site'])) {
+      res.status(403).json({ error: 'Accès refusé au site cible.' });
+      return;
+    }
+
     const { data, error } = await supabaseAdmin
       .from('cahier_weeks')
       .update(updates)
