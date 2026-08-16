@@ -86,6 +86,36 @@ export class RapportComponent implements OnInit {
   readonly presentsNoms = signal<string>('');
   readonly remarques = signal<string>('');
 
+  // Rapport chargé en cours (pour l'historique de modification)
+  readonly currentDayReportLoaded = signal<DailyReport | null>(null);
+
+  // Historique lisible de la dernière modification
+  readonly formattedLastModified = computed<string | null>(() => {
+    const report = this.currentDayReportLoaded();
+    const timestamp = report?.updated_at || report?.created_at;
+    if (!timestamp) return null;
+
+    try {
+      const d = new Date(timestamp);
+      if (isNaN(d.getTime())) return null;
+
+      const datePart = new Intl.DateTimeFormat('fr-FR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      }).format(d);
+
+      const timePart = new Intl.DateTimeFormat('fr-FR', {
+        hour: '2-digit',
+        minute: '2-digit'
+      }).format(d);
+
+      return `Dernière modification le ${datePart} à ${timePart}`;
+    } catch {
+      return null;
+    }
+  });
+
   // États d'interface
   readonly isLoading = signal<boolean>(false);
   readonly isSaving = signal<boolean>(false);
@@ -265,6 +295,7 @@ export class RapportComponent implements OnInit {
     const existing = await this.reportService.getReport(site, dateStr);
 
     if (existing) {
+      this.currentDayReportLoaded.set(existing);
       this.totalChargements.set(existing.total_chargements ? existing.total_chargements : null);
       this.totalTransferts.set(existing.total_transferts ? existing.total_transferts : null);
       this.totalSon.set(existing.total_son ? existing.total_son : null);
@@ -275,6 +306,7 @@ export class RapportComponent implements OnInit {
       this.remarques.set(existing.remarques ?? '');
       this.isManuallyModified.set(false);
     } else {
+      this.currentDayReportLoaded.set(null);
       await this.recalculateFromCahierForDate(dateStr);
       this.customItems.set([]);
       this.effectifDeclare.set(null);
