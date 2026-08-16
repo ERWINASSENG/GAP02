@@ -61,6 +61,7 @@ export class RapportComponent implements OnInit {
 
   // Filtre de site
   readonly selectedSite = signal<string>('SCMC');
+  readonly isFilterOpen = signal<boolean>(false);
 
   // Semaines trouvées pour le site
   readonly weeksList = signal<WorkWeek[]>([]);
@@ -192,9 +193,18 @@ export class RapportComponent implements OnInit {
 
   async onSiteChange(site: string): Promise<void> {
     this.selectedSite.set(site);
+    this.isFilterOpen.set(false);
     this.viewMode.set('weeks-list');
     this.selectedWeek.set(null);
     await this.loadWeeksList();
+  }
+
+  toggleFilter(): void {
+    this.isFilterOpen.update(open => !open);
+  }
+
+  closeFilter(): void {
+    this.isFilterOpen.set(false);
   }
 
   /**
