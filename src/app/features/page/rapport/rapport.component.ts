@@ -108,6 +108,7 @@ export class RapportComponent implements OnInit {
 
     return days.map(d => {
       const rep = map[d.date] || null;
+      const isFilled = this.reportService.isReportFilled(rep);
       const dateObj = new Date(d.date + 'T00:00:00');
       const formatted = isNaN(dateObj.getTime())
         ? d.date
@@ -117,8 +118,8 @@ export class RapportComponent implements OnInit {
         date: d.date,
         dayName: d.dayName,
         formattedDate: formatted,
-        report: rep,
-        isFilled: !!rep
+        report: isFilled ? rep : null,
+        isFilled
       };
     });
   });
@@ -341,10 +342,12 @@ export class RapportComponent implements OnInit {
     this.saveSuccess.set(false);
 
     const week = this.selectedWeek();
+    const site = this.selectedSite();
+    const date = this.selectedDate();
 
     const report: DailyReport = {
-      site: this.selectedSite(),
-      date: this.selectedDate(),
+      site,
+      date,
       week_id: week?.id,
       total_chargements: Number(this.totalChargements()) || 0,
       total_transferts: Number(this.totalTransferts()) || 0,
@@ -357,14 +360,24 @@ export class RapportComponent implements OnInit {
       remarques: this.remarques() || ''
     };
 
+    const isFilled = this.reportService.isReportFilled(report);
+
     try {
-      const saved = await this.reportService.saveReport(report);
+      if (isFilled) {
+        const saved = await this.reportService.saveReport(report);
+        const currentMap = { ...this.weekReportsMap() };
+        currentMap[saved.date] = saved;
+        this.weekReportsMap.set(currentMap);
+        this.saveSuccessMessage.set(`Rapport du ${this.formattedDateHeader()} enregistré avec succès.`);
+      } else {
+        // Si la fiche a été entièrement vidée, supprimer le rapport pour repasser en "Non renseigné"
+        await this.reportService.deleteReport(site, date);
+        const currentMap = { ...this.weekReportsMap() };
+        delete currentMap[date];
+        this.weekReportsMap.set(currentMap);
+        this.saveSuccessMessage.set(`La fiche du ${this.formattedDateHeader()} a été réinitialisée (Non renseignée).`);
+      }
 
-      const currentMap = { ...this.weekReportsMap() };
-      currentMap[saved.date] = saved;
-      this.weekReportsMap.set(currentMap);
-
-      this.saveSuccessMessage.set(`Rapport du ${this.formattedDateHeader()} enregistré avec succès.`);
       this.saveSuccess.set(true);
       this.isManuallyModified.set(false);
 

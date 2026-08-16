@@ -299,6 +299,59 @@ export class ReportService {
   }
 
   /**
+   * Vérifie si un rapport contient des informations réellement renseignées.
+   */
+  isReportFilled(report: DailyReport | null | undefined): boolean {
+    if (!report) return false;
+
+    const chargements = Number(report.total_chargements) || 0;
+    const transferts = Number(report.total_transferts) || 0;
+    const son = Number(report.total_son) || 0;
+    const dechargements = Number(report.total_dechargements) || 0;
+    const customItemsSum = (report.custom_items || []).reduce((sum, it) => sum + (Number(it.amount) || 0), 0);
+    const effectif = Number(report.effectif_declare) || 0;
+    const hasPresents = !!(report.presents_noms && report.presents_noms.trim().length > 0);
+    const hasRemarques = !!(report.remarques && report.remarques.trim().length > 0);
+
+    const totalGeneral = chargements + transferts + son + dechargements + customItemsSum;
+
+    return totalGeneral > 0 || effectif > 0 || hasPresents || hasRemarques;
+  }
+
+  /**
+   * Supprime un rapport pour un site et une date (quand l'utilisateur vide tous les champs).
+   */
+  async deleteReport(site: string, date: string): Promise<void> {
+    if (!site || !date) return;
+
+    try {
+      const client = this.supabaseService.client;
+      await client
+        .from('daily_reports')
+        .delete()
+        .ilike('site', site)
+        .eq('date', date);
+    } catch (e) {
+      console.warn('Erreur suppression Supabase rapport:', e);
+    }
+
+    if (this.isBrowser) {
+      try {
+        const raw = localStorage.getItem(this.LOCAL_STORAGE_KEY);
+        if (raw) {
+          const list: DailyReport[] = JSON.parse(raw);
+          const filtered = list.filter(r => 
+            !((r.site || '').trim().toLowerCase() === (site || '').trim().toLowerCase() && r.date === date)
+          );
+          localStorage.setItem(this.LOCAL_STORAGE_KEY, JSON.stringify(filtered));
+        }
+      } catch (e) {
+        console.error('Erreur suppression localStorage', e);
+      }
+    }
+  }
+
+  /**
    * Enregistre ou met à jour le rapport quotidien.
    */
   async saveReport(report: DailyReport): Promise<DailyReport> {
