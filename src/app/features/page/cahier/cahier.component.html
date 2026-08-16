@@ -256,9 +256,13 @@
                             <th class="py-3 px-3 sm:py-3 sm:px-4 w-28 border border-slate-300 dark:border-slate-700 text-center">Nbr SACS</th>
                           }
                         } @else if (operationForm.value.type === 'Chargement Camions') {
-                          <!-- CHARGEMENT CAMIONS TUSCANI: DATE, CAMIONS, MATRICULE, TONNAGE, PU, MONTANT -->
-                          <th class="py-3 px-3 sm:py-3 sm:px-4 border border-slate-300 dark:border-slate-700 text-center">CAMIONS</th>
+                          <!-- CHARGEMENT CAMIONS: DATE, MATRICULE, TONNAGE, PU, MONTANT -->
                           <th class="py-3 px-3 sm:py-3 sm:px-4 border border-slate-300 dark:border-slate-700 text-center">MATRICULE</th>
+                          <th class="py-3 px-3 sm:py-3 sm:px-4 w-28 border border-slate-300 dark:border-slate-700 text-center">TONNAGE</th>
+                        } @else if (operationForm.value.type === 'Chargement Camion Riz' || operationForm.value.type === 'Chargement Camion Sucre') {
+                          <!-- CHARGEMENT CAMION RIZ / SUCRE: DATE, MATRICULE, PRODUITS, TONNAGE, PU, MONTANT -->
+                          <th class="py-3 px-3 sm:py-3 sm:px-4 border border-slate-300 dark:border-slate-700 text-center">MATRICULE</th>
+                          <th class="py-3 px-3 sm:py-3 sm:px-4 border border-slate-300 dark:border-slate-700 text-center min-w-[150px] max-w-[300px]">PRODUITS</th>
                           <th class="py-3 px-3 sm:py-3 sm:px-4 w-28 border border-slate-300 dark:border-slate-700 text-center">TONNAGE</th>
                         } @else {
                           <!-- Standard Types: DATE, [DN / LTI / ISTI], MATRICULE, PRODUIT, QTE, PU, MONTANT -->
@@ -360,15 +364,6 @@
                               </td>
                             }
                           } @else if (operationForm.value.type === 'Chargement Camions') {
-                            <!-- CAMIONS (input mapped to dnNumber) -->
-                            <td class="py-3 px-3 sm:py-3 sm:px-3 border border-slate-300 dark:border-slate-700 text-center">
-                              <input 
-                                type="text" 
-                                formControlName="dnNumber"
-                                placeholder="Camion"
-                                class="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-sm uppercase text-center text-slate-900 dark:text-white focus:outline-hidden focus:ring-1 focus:ring-indigo-500/20"
-                              />
-                            </td>
                             <!-- MATRICULE -->
                             <td class="py-3 px-3 sm:py-3 sm:px-3 border border-slate-300 dark:border-slate-700 text-center">
                               <input 
@@ -379,6 +374,34 @@
                               />
                             </td>
                             <!-- TONNAGE (input mapped to qte) -->
+                            <td class="py-3 px-3 sm:py-3 sm:px-3 border border-slate-300 dark:border-slate-700 text-center">
+                              <input 
+                                type="number" 
+                                formControlName="qte"
+                                placeholder="Tonnage"
+                                class="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-sm font-mono text-center text-slate-900 dark:text-white focus:outline-hidden focus:ring-1 focus:ring-indigo-500/20"
+                              />
+                            </td>
+                          } @else if (operationForm.value.type === 'Chargement Camion Riz' || operationForm.value.type === 'Chargement Camion Sucre') {
+                            <!-- MATRICULE -->
+                            <td class="py-3 px-3 sm:py-3 sm:px-3 border border-slate-300 dark:border-slate-700 text-center">
+                              <input 
+                                type="text" 
+                                formControlName="matricule"
+                                placeholder="Matricule"
+                                class="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-sm uppercase text-center text-slate-900 dark:text-white focus:outline-hidden focus:ring-1 focus:ring-indigo-500/20"
+                              />
+                            </td>
+                            <!-- PRODUITS -->
+                            <td class="py-3 px-3 sm:py-3 sm:px-3 border border-slate-300 dark:border-slate-700 text-center">
+                              <input 
+                                type="text" 
+                                formControlName="produit"
+                                [placeholder]="operationForm.value.type === 'Chargement Camion Riz' ? 'RIZ' : 'SUCRE'"
+                                class="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-sm uppercase text-center text-slate-900 dark:text-white focus:outline-hidden focus:ring-1 focus:ring-indigo-500/20"
+                              />
+                            </td>
+                            <!-- TONNAGE -->
                             <td class="py-3 px-3 sm:py-3 sm:px-3 border border-slate-300 dark:border-slate-700 text-center">
                               <input 
                                 type="number" 
@@ -525,6 +548,17 @@
                         } @else if (operationForm.value.type === 'Chargement Camions') {
                           <!-- CHARGEMENT CAMIONS TUSCANI: DATE (colspan 1), CAMIONS (colspan 1), TONNAGE (colspan 1), PU (colspan 1, empty), MONTANT (colspan 1), empty (colspan 1) -->
                           <td colspan="2" class="py-1.5 px-2 sm:py-2.5 sm:px-4 border border-slate-300 dark:border-slate-700 text-center text-[11px] text-slate-600 dark:text-slate-300 uppercase tracking-wider font-extrabold">TOTAL</td>
+                          <td class="py-1.5 px-2 sm:py-2.5 sm:px-4 border border-slate-300 dark:border-slate-700 text-center font-mono text-indigo-600 dark:text-indigo-400 text-sm font-bold">
+                            {{ totalQuantite() | number }}
+                          </td>
+                          <td class="border border-slate-300 dark:border-slate-700"></td>
+                          <td class="py-1.5 px-2 sm:py-2.5 sm:px-4 border border-slate-300 dark:border-slate-700 text-center font-mono text-indigo-600 dark:text-indigo-400 text-sm font-bold">
+                            {{ totalChargement() | number }}
+                          </td>
+                          <td class="border border-slate-300 dark:border-slate-700"></td>
+                        } @else if (operationForm.value.type === 'Chargement Camion Riz' || operationForm.value.type === 'Chargement Camion Sucre') {
+                          <!-- CHARGEMENT CAMION RIZ / SUCRE: DATE, MATRICULE, PRODUITS (colspan 3), TONNAGE (colspan 1), PU (colspan 1, empty), MONTANT (colspan 1), empty (colspan 1) -->
+                          <td colspan="3" class="py-1.5 px-2 sm:py-2.5 sm:px-4 border border-slate-300 dark:border-slate-700 text-center text-[11px] text-slate-600 dark:text-slate-300 uppercase tracking-wider font-extrabold">TOTAL</td>
                           <td class="py-1.5 px-2 sm:py-2.5 sm:px-4 border border-slate-300 dark:border-slate-700 text-center font-mono text-indigo-600 dark:text-indigo-400 text-sm font-bold">
                             {{ totalQuantite() | number }}
                           </td>
@@ -839,57 +873,90 @@
             </p>
           </div>
         } @else {
-          <!-- Tableau Mensuel Synthétique -->
-          <div class="overflow-x-auto rounded-xl">
-            <table class="w-full text-left border-collapse border border-slate-300 dark:border-slate-700 text-xs sm:text-sm block md:table overflow-x-auto whitespace-nowrap md:whitespace-normal">
-              <thead>
-                <!-- Top Header Row -->
-                <tr class="bg-slate-100 dark:bg-slate-950 border-b border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-bold tracking-wider uppercase">
-                  <th class="px-6 py-3 text-center border border-slate-300 dark:border-slate-700" colspan="4">
-                    SYNTHÈSE MENSUELLE GLOBALE DES OPÉRATIONS
-                  </th>
-                </tr>
-                <tr class="bg-slate-50 dark:bg-slate-950 border-b border-slate-300 dark:border-slate-700 text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider text-xs">
-                  <th class="px-6 py-3 border border-slate-300 dark:border-slate-700">Mois / Période</th>
-                  <th class="px-6 py-3 border border-slate-300 dark:border-slate-700">Site d'Opération</th>
-                  <th class="px-6 py-3 border border-slate-300 dark:border-slate-700">Opérations enregistrées</th>
-                  <th class="px-6 py-3 border border-slate-300 dark:border-slate-700 text-right">Détails</th>
-                </tr>
-              </thead>
-              <tbody class="text-slate-700 dark:text-slate-200">
-                @for (summary of visibleMonthlySummaries(); track $index) {
-                  <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-950/20 transition-all border-b border-slate-300 dark:border-slate-700">
-                    <td class="px-6 py-4 border border-slate-300 dark:border-slate-700 font-semibold text-slate-900 dark:text-white">
-                      {{ summary.month }}
-                    </td>
-                     <td class="px-6 py-4 border border-slate-300 dark:border-slate-700">
-                      <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-xs font-medium text-slate-700 dark:text-slate-300 border border-slate-200/50 dark:border-slate-700/50">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-3.5 h-3.5 text-slate-500 dark:text-slate-400">
-                          <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-                          <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25s-7.5-4.108-7.5-11.25a7.5 7.5 0 1 1 15 0Z" />
-                        </svg>
-                        Site {{ summary.site }}
-                      </span>
-                    </td>
-                    <td class="px-6 py-4 border border-slate-300 dark:border-slate-700 font-semibold text-slate-900 dark:text-white">
-                      Opérations enregistrées ({{ summary.count }})
-                    </td>
-                    <td class="px-6 py-4 border border-slate-300 dark:border-slate-700 text-right">
-                      <button 
-                        (click)="showDetail(summary)"
-                        class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-semibold rounded-lg transition-all cursor-pointer border border-slate-200 dark:border-slate-700"
-                      >
-                        <span>Voir détail</span>
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3.5 h-3.5 shrink-0">
-                          <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
-                          <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-                        </svg>
-                      </button>
-                    </td>
+          <!-- Synthèse des Opérations (Intégration directe & transparente sur la page) -->
+          <div class="bg-transparent overflow-hidden" id="monthly-summary-table-card">
+            <!-- En-tête de section sobre et direct -->
+            <div class="py-3 mb-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+              <div class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-xl bg-indigo-50/80 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/40 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" class="w-4.5 h-4.5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 class="text-sm sm:text-base font-bold text-slate-900 dark:text-white tracking-tight">
+                    Synthèse des Opérations
+                  </h3>
+                  <p class="text-xs text-slate-500 dark:text-slate-400">
+                    Regroupement consolidé des mouvements par mois et par site
+                  </p>
+                </div>
+              </div>
+              <span class="text-xs font-semibold px-2.5 py-1 bg-slate-200/60 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 rounded-lg self-start sm:self-auto">
+                {{ visibleMonthlySummaries().length }} période(s)
+              </span>
+            </div>
+
+            <!-- Tableau épuré sans fond de carte -->
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs sm:text-sm">
+                <thead>
+                  <tr class="border-b border-slate-200/80 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wider text-[11px]">
+                    <th scope="col" class="py-3 px-3">Mois / Période</th>
+                    <th scope="col" class="py-3 px-3">Site d'Opération</th>
+                    <th scope="col" class="py-3 px-3">Volume d'activité</th>
+                    <th scope="col" class="py-3 px-3 text-right">Action</th>
                   </tr>
-                }
-              </tbody>
-            </table>
+                </thead>
+                <tbody class="divide-y divide-slate-200/60 dark:divide-slate-800/60 text-slate-700 dark:text-slate-200">
+                  @for (summary of visibleMonthlySummaries(); track $index) {
+                    <tr class="hover:bg-slate-100/70 dark:hover:bg-slate-800/50 transition-colors group cursor-pointer" (click)="showDetail(summary)">
+                      <!-- Mois -->
+                      <td class="py-3.5 px-3 font-semibold text-slate-900 dark:text-white whitespace-nowrap">
+                        <div class="flex items-center gap-2">
+                          <span class="w-2 h-2 rounded-full bg-indigo-500/80 group-hover:scale-125 transition-transform"></span>
+                          <span>{{ summary.month }}</span>
+                        </div>
+                      </td>
+
+                      <!-- Site -->
+                      <td class="py-3.5 px-3 whitespace-nowrap">
+                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/70 dark:bg-slate-800 text-xs font-medium text-slate-700 dark:text-slate-300 border border-slate-200/60 dark:border-slate-700/60 shadow-2xs">
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-3.5 h-3.5 text-slate-400">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25s-7.5-4.108-7.5-11.25a7.5 7.5 0 1 1 15 0Z" />
+                          </svg>
+                          Site {{ summary.site }}
+                        </span>
+                      </td>
+
+                      <!-- Volume d'opérations -->
+                      <td class="py-3.5 px-3 whitespace-nowrap">
+                        <span class="inline-flex items-center gap-1.5 font-medium text-slate-900 dark:text-slate-100">
+                          <span class="inline-flex items-center justify-center min-w-6 h-6 px-1.5 rounded-md bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 font-bold text-xs">
+                            {{ summary.count }}
+                          </span>
+                          <span class="text-slate-500 dark:text-slate-400 text-xs">opération(s)</span>
+                        </span>
+                      </td>
+
+                      <!-- Bouton d'action -->
+                      <td class="py-3.5 px-3 text-right whitespace-nowrap">
+                        <button 
+                          (click)="$event.stopPropagation(); showDetail(summary)"
+                          class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-slate-800 hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-600 text-slate-700 dark:text-slate-200 text-xs font-semibold rounded-lg transition-all cursor-pointer border border-slate-200/80 hover:border-indigo-600 dark:border-slate-700 shadow-2xs"
+                        >
+                          <span>Voir détail</span>
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3.5 h-3.5 shrink-0 group-hover:translate-x-0.5 transition-transform">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
+                          </svg>
+                        </button>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
           </div>
         }
       </div>
@@ -1101,6 +1168,7 @@
             @let isWagon = group.type.toLowerCase().includes('wagon');
             @let isBleWagon = group.type === 'Chargement Wagon Blé' || (isWagon && group.product === 'Blé');
             @let isFarineWagon = group.type === 'Chargement Wagon Farine' || (isWagon && group.product.toLowerCase().includes('farine'));
+            @let isRizSucre = group.type === 'Chargement Camion Riz' || group.type === 'Chargement Camion Sucre';
             @let showDn = group.type === 'Chargement' && (selectedSummary()?.site === 'AFISA' || selectedSummary()?.site === 'SCMC');
             
             <div class="w-full" id="type-group-{{group.type}}">
@@ -1109,7 +1177,7 @@
                 <table class="w-full text-center border-collapse border border-slate-300 dark:border-slate-700 block md:table overflow-x-auto whitespace-nowrap md:whitespace-normal">
                   <thead>
                     <tr class="bg-slate-100 dark:bg-slate-950 border-b border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-center font-bold tracking-wider uppercase text-xs">
-                      <th class="px-2 py-2.5 sm:px-4 sm:py-3 border border-slate-300 dark:border-slate-700" [attr.colspan]="showDn ? 8 : 7">
+                      <th class="px-2 py-2.5 sm:px-4 sm:py-3 border border-slate-300 dark:border-slate-700" [attr.colspan]="showDn ? 8 : (isRizSucre || isWagon ? 7 : 6)">
                         @if (group.type === 'Chargement des wagons' || group.type === 'Chargement wagons') {
                           CHARGEMENT WAGONS {{ (group.product || '') | uppercase }}@if (selectedSummary()?.site !== 'AUTRE') { {{ ' ' + (selectedSummary()?.site || 'SCMC') | uppercase }} }
                         } @else {
@@ -1119,19 +1187,19 @@
                     </tr>
                     <tr class="bg-slate-50 dark:bg-slate-950 text-slate-500 dark:text-slate-400 text-[11px] font-bold uppercase tracking-wider">
                       <th class="px-2 py-2 sm:px-4 sm:py-3 border border-slate-300 dark:border-slate-700 text-center">Date</th>
-                      @if (group.type !== 'Chargement Camions' && !isWagon && showDn) {
+                      @if (group.type !== 'Chargement Camions' && !isWagon && !isRizSucre && showDn) {
                         <th class="px-2 py-2 sm:px-4 sm:py-3 border border-slate-300 dark:border-slate-700 text-center">DN / LTI / ISTI</th>
                       }
-                      @if (showDn || group.type === 'Chargement Camions' || isWagon) {
+                      @if (showDn || group.type === 'Chargement Camions' || isWagon || isRizSucre) {
                         <th class="px-2 py-2 sm:px-4 sm:py-3 border border-slate-300 dark:border-slate-700 text-center">Matricule</th>
                       }
                       @if (group.type !== 'Chargement Camions' && !isWagon) {
                         <th class="px-2 py-2 sm:px-4 sm:py-3 border border-slate-300 dark:border-slate-700 text-center">
-                          {{ group.type === 'Reconditionnement' ? 'Désignation' : 'Produit' }}
+                          {{ group.type === 'Reconditionnement' ? 'Désignation' : (isRizSucre ? 'Produits' : 'Produit') }}
                         </th>
                       }
                       <th class="px-2 py-2 sm:px-4 sm:py-3 border border-slate-300 dark:border-slate-700 text-center">
-                        {{ group.type === 'Chargement Camions' || isBleWagon ? 'Tonnage' : (isFarineWagon ? 'Nbr sacs' : 'Qte') }}
+                        {{ group.type === 'Chargement Camions' || isBleWagon || isRizSucre ? 'Tonnage' : (isFarineWagon ? 'Nbr sacs' : 'Qte') }}
                       </th>
                       <th class="px-2 py-2 sm:px-4 sm:py-3 border border-slate-300 dark:border-slate-700 text-center">PU (FCFA)</th>
                       <th class="px-2 py-2 sm:px-4 sm:py-3 border border-slate-300 dark:border-slate-700 text-center">Montant (FCFA)</th>
@@ -1150,10 +1218,14 @@
                               </span>
                             }
                           </td>
-                          @if (showDn || group.type === 'Chargement Camions' || isWagon) {
+                          @if (showDn || isWagon) {
                             <td class="px-2 py-2 sm:px-4 sm:py-3 border border-slate-300 dark:border-slate-700 text-center font-semibold text-slate-800 dark:text-slate-200">
                               {{ item.dn }}
                             </td>
+                            <td class="px-2 py-2 sm:px-4 sm:py-3 border border-slate-300 dark:border-slate-700 text-center font-mono text-slate-600 dark:text-slate-300">
+                              {{ item.matricule || '—' }}
+                            </td>
+                          } @else if (group.type === 'Chargement Camions' || isRizSucre) {
                             <td class="px-2 py-2 sm:px-4 sm:py-3 border border-slate-300 dark:border-slate-700 text-center font-mono text-slate-600 dark:text-slate-300">
                               {{ item.matricule || '—' }}
                             </td>
@@ -1206,9 +1278,16 @@
                           <td class="px-2 py-2 sm:px-4 sm:py-3 border border-slate-300 dark:border-slate-700 text-center font-mono">
                             {{ formatDateFr(op.date) }}
                           </td>
-                          @if (showDn || group.type === 'Chargement Camions' || isWagon) {
+                          @if (showDn || isWagon) {
                             <td class="px-2 py-2 sm:px-4 sm:py-3 border border-slate-300 dark:border-slate-700 text-center font-semibold text-slate-800 dark:text-slate-200">
                               {{ op.destination || '-' }}
+                            </td>
+                            <td class="px-2 py-2 sm:px-4 sm:py-3 border border-slate-300 dark:border-slate-700 text-center font-mono text-slate-600 dark:text-slate-300">
+                              —
+                            </td>
+                          } @else if (group.type === 'Chargement Camions' || isRizSucre) {
+                            <td class="px-2 py-2 sm:px-4 sm:py-3 border border-slate-300 dark:border-slate-700 text-center font-mono text-slate-600 dark:text-slate-300">
+                              —
                             </td>
                           }
                           @if (group.type !== 'Chargement Camions' && !isWagon) {
@@ -1246,6 +1325,16 @@
                     <tr class="bg-slate-100 dark:bg-slate-950 font-bold text-slate-900 dark:text-white border-t-2 border-slate-300 dark:border-slate-700">
                       @if (group.type === 'Chargement Camions') {
                         <td colspan="2" class="px-2 py-2.5 sm:px-4 sm:py-3 border border-slate-300 dark:border-slate-700 text-center font-bold uppercase tracking-wider text-xs">TOTAL</td>
+                        <td class="px-2 py-2.5 sm:px-4 sm:py-3 border border-slate-300 dark:border-slate-700 text-center font-mono font-bold text-slate-800 dark:text-slate-200">
+                          {{ getGroupTotalQte(group.ops) | number }}
+                        </td>
+                        <td class="px-2 py-2.5 sm:px-4 sm:py-3 border border-slate-300 dark:border-slate-700"></td>
+                        <td class="px-2 py-2.5 sm:px-4 sm:py-3 border border-slate-300 dark:border-slate-700 text-center font-mono font-bold text-indigo-600 dark:text-indigo-400">
+                          {{ getGroupTotalMontant(group.ops) | number }}
+                        </td>
+                        <td class="px-2 py-2.5 sm:px-4 sm:py-3 border border-slate-300 dark:border-slate-700"></td>
+                      } @else if (isRizSucre) {
+                        <td colspan="3" class="px-2 py-2.5 sm:px-4 sm:py-3 border border-slate-300 dark:border-slate-700 text-center font-bold uppercase tracking-wider text-xs">TOTAL</td>
                         <td class="px-2 py-2.5 sm:px-4 sm:py-3 border border-slate-300 dark:border-slate-700 text-center font-mono font-bold text-slate-800 dark:text-slate-200">
                           {{ getGroupTotalQte(group.ops) | number }}
                         </td>

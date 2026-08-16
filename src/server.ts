@@ -15,6 +15,9 @@ const browserDistFolder = resolve(serverDistFolder, '../browser');
 const app = express();
 const angularApp = new AngularNodeAppEngine();
 
+// Activer trust proxy pour l'environnement Cloud Run / reverse proxy
+app.set('trust proxy', 1);
+
 app.use(express.json());
 
 // Limiteur de débit (Rate Limiting) pour sécuriser les routes d'API
@@ -23,6 +26,10 @@ const apiLimiter = rateLimit({
   max: 300, // Limite à 300 requêtes par fenêtre par IP
   standardHeaders: true, // Renvoie les headers `RateLimit-*` standard
   legacyHeaders: false, // Désactive les headers `X-RateLimit-*` obsolètes
+  validate: {
+    xForwardedForHeader: false,
+    default: true,
+  },
   message: {
     error: 'Trop de requêtes effectuées depuis cette adresse IP. Veuillez patienter 15 minutes avant de réessayer.',
     statusCode: 429,

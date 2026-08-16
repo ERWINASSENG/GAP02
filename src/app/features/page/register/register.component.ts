@@ -20,7 +20,7 @@ export class RegisterComponent implements OnInit {
   readonly isLoading = signal(false);
   readonly errorMessage = signal('');
   readonly successMessage = signal('');
-  readonly sites = ['SCMC', 'TUSCANI', 'AFISA', 'AUTRE'];
+  readonly sites = ['SCMC', 'TUSCANI', 'AFISA', 'BOLLORÉ', 'AUTRE'];
   readonly selectedSites = signal<string[]>([]);
 
   // State for user list

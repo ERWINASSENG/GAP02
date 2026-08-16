@@ -35,7 +35,9 @@ export const OPERATION_TYPES = [
   'Chargement Wagon Farine',
   'Reconditionnement',
   'Nettoyage',
-  'Chargement Camions'
+  'Chargement Camions',
+  'Chargement Camion Riz',
+  'Chargement Camion Sucre'
 ] as const;
 
 export type OperationType = (typeof OPERATION_TYPES)[number];

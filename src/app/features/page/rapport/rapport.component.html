@@ -411,82 +411,25 @@
 
         <!-- Section Montants de la journée -->
         <div class="space-y-4">
-          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-            Montants de la Journée en FCFA (Pré-calculés depuis le Cahier)
-          </h3>
-
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <!-- Chargement farine -->
-            <div class="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-200 dark:border-slate-700/60 flex items-center justify-between">
-              <div>
-                <span class="block text-sm font-bold text-slate-800 dark:text-slate-200">Chargement farine</span>
-                <span class="text-xs text-slate-400">Montant FCFA</span>
+            @for (rubric of operationRubrics(); track $index) {
+              <div class="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-200 dark:border-slate-700/60 flex items-center justify-between">
+                <div>
+                  <span class="block text-sm font-bold text-slate-800 dark:text-slate-200">{{ rubric.type }}</span>
+                  <span class="text-xs text-slate-400">Montant FCFA</span>
+                </div>
+                <div class="w-36">
+                  <input
+                    type="number"
+                    min="0"
+                    [ngModel]="rubric.amount === 0 ? null : rubric.amount"
+                    (ngModelChange)="updateRubricAmount($index, $event)"
+                    placeholder="—"
+                    class="w-full text-right font-black text-lg text-slate-900 dark:text-white bg-transparent border-0 border-b border-dashed border-slate-300 dark:border-slate-600 focus:border-indigo-500 focus:outline-none pb-0.5"
+                  />
+                </div>
               </div>
-              <div class="w-36">
-                <input
-                  type="number"
-                  min="0"
-                  [ngModel]="totalChargements()"
-                  (ngModelChange)="totalChargements.set($event ? +$event : null); onValueManualChange()"
-                  placeholder="—"
-                  class="w-full text-right font-black text-lg text-slate-900 dark:text-white bg-transparent border-0 border-b border-dashed border-slate-300 dark:border-slate-600 focus:border-indigo-500 focus:outline-none pb-0.5"
-                />
-              </div>
-            </div>
-
-            <!-- Transfert farine -->
-            <div class="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-200 dark:border-slate-700/60 flex items-center justify-between">
-              <div>
-                <span class="block text-sm font-bold text-slate-800 dark:text-slate-200">Transfert farine</span>
-                <span class="text-xs text-slate-400">Montant FCFA</span>
-              </div>
-              <div class="w-36">
-                <input
-                  type="number"
-                  min="0"
-                  [ngModel]="totalTransferts()"
-                  (ngModelChange)="totalTransferts.set($event ? +$event : null); onValueManualChange()"
-                  placeholder="—"
-                  class="w-full text-right font-black text-lg text-slate-900 dark:text-white bg-transparent border-0 border-b border-dashed border-slate-300 dark:border-slate-600 focus:border-indigo-500 focus:outline-none pb-0.5"
-                />
-              </div>
-            </div>
-
-            <!-- Déchargement farine -->
-            <div class="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-200 dark:border-slate-700/60 flex items-center justify-between">
-              <div>
-                <span class="block text-sm font-bold text-slate-800 dark:text-slate-200">Déchargement farine</span>
-                <span class="text-xs text-slate-400">Montant FCFA</span>
-              </div>
-              <div class="w-36">
-                <input
-                  type="number"
-                  min="0"
-                  [ngModel]="totalDechargements()"
-                  (ngModelChange)="totalDechargements.set($event ? +$event : null); onValueManualChange()"
-                  placeholder="—"
-                  class="w-full text-right font-black text-lg text-slate-900 dark:text-white bg-transparent border-0 border-b border-dashed border-slate-300 dark:border-slate-600 focus:border-indigo-500 focus:outline-none pb-0.5"
-                />
-              </div>
-            </div>
-
-            <!-- Son -->
-            <div class="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-200 dark:border-slate-700/60 flex items-center justify-between">
-              <div>
-                <span class="block text-sm font-bold text-slate-800 dark:text-slate-200">Son</span>
-                <span class="text-xs text-slate-400">Montant FCFA</span>
-              </div>
-              <div class="w-36">
-                <input
-                  type="number"
-                  min="0"
-                  [ngModel]="totalSon()"
-                  (ngModelChange)="totalSon.set($event ? +$event : null); onValueManualChange()"
-                  placeholder="—"
-                  class="w-full text-right font-black text-lg text-slate-900 dark:text-white bg-transparent border-0 border-b border-dashed border-slate-300 dark:border-slate-600 focus:border-indigo-500 focus:outline-none pb-0.5"
-                />
-              </div>
-            </div>
+            }
           </div>
         </div>
 

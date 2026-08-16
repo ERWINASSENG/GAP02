@@ -42,7 +42,7 @@ export class CahierService {
   private getUserAssignedSites(user: PortUser | null): string[] {
     if (!user) return [];
     if (user.role === 'admin') {
-      return ['SCMC', 'TUSCANI', 'AFISA', 'AUTRE'];
+      return ['SCMC', 'TUSCANI', 'AFISA', 'BOLLORÉ', 'AUTRE'];
     }
     const sites: string[] = [];
     if (user.assignedSiteNames && user.assignedSiteNames.length > 0) {

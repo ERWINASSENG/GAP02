@@ -48,7 +48,7 @@ export class AdminCahierViewComponent {
 
   readonly adminWeeks = this.cahierService.adminWeeks;
 
-  readonly sites = ['SCMC', 'TUSCANI', 'AFISA', 'AUTRE'];
+  readonly sites = ['SCMC', 'TUSCANI', 'AFISA', 'BOLLORÉ', 'AUTRE'];
   readonly operationTypes = OPERATION_TYPES;
 
   // Sélection de semaine active/clôturée/supprimée

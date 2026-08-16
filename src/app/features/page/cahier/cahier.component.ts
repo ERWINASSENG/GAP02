@@ -56,7 +56,7 @@ export class CahierComponent implements OnInit {
   readonly visibleSites = computed<string[]>(() => {
     const user = this.authService.currentUser();
     if (user?.role === 'admin') {
-      return ['SCMC', 'TUSCANI', 'AFISA', 'AUTRE'];
+      return ['SCMC', 'TUSCANI', 'AFISA', 'BOLLORÉ', 'AUTRE'];
     }
 
     const sites: string[] = [];
@@ -174,6 +174,15 @@ export class CahierComponent implements OnInit {
   private getOperationTypesForSite(site: string): string[] {
     if (site === 'TUSCANI') {
       return ['Chargement Camions'];
+    }
+    if (site === 'BOLLORÉ') {
+      return [
+        'Chargement Camions',
+        'Chargement Wagon Blé',
+        'Chargement Wagon Farine',
+        'Chargement Camion Riz',
+        'Chargement Camion Sucre'
+      ];
     }
     if (site === 'AUTRE') {
       return ['Chargement Wagon Blé', 'Chargement Wagon Farine', 'Reconditionnement', 'Nettoyage'];
@@ -335,7 +344,6 @@ export class CahierComponent implements OnInit {
     }
 
     const isDnRequired = isPrefixRequired || 
-                         currentType === 'Chargement Camions' || 
                          currentType === 'Chargement des wagons' || 
                          currentType === 'Chargement wagons' ||
                          currentType === 'Chargement Wagon Blé' ||
@@ -460,7 +468,12 @@ export class CahierComponent implements OnInit {
       }
     }
     let defaultProduct = this.operationForm.controls.produit.value || '';
-    if (this.operationForm.value.type === 'Reconditionnement' && this.itemsFormArray.length > 0) {
+    const currentType = this.operationForm.value.type;
+    if (currentType === 'Chargement Camion Riz' && !defaultProduct) {
+      defaultProduct = 'RIZ';
+    } else if (currentType === 'Chargement Camion Sucre' && !defaultProduct) {
+      defaultProduct = 'SUCRE';
+    } else if (currentType === 'Reconditionnement' && this.itemsFormArray.length > 0) {
       defaultProduct = this.itemsFormArray.at(0).get('produit')?.value || '';
     }
     const group = this.createItemFormGroup(opDate, '', defaultProduct);
@@ -558,6 +571,9 @@ export class CahierComponent implements OnInit {
     if (val.type === 'Chargement Camions') {
       return 7;
     }
+    if (val.type === 'Chargement Camion Riz' || val.type === 'Chargement Camion Sucre') {
+      return 7;
+    }
     const isDnActive = val.type === 'Chargement' && (val.site === 'AFISA' || val.site === 'SCMC');
     return isDnActive ? 8 : 7;
   });
@@ -569,6 +585,9 @@ export class CahierComponent implements OnInit {
     }
     if (val.type === 'Chargement Camions') {
       return 5;
+    }
+    if (val.type === 'Chargement Camion Riz' || val.type === 'Chargement Camion Sucre') {
+      return 6;
     }
     const isDnActive = val.type === 'Chargement' && (val.site === 'AFISA' || val.site === 'SCMC');
     return isDnActive ? 6 : 5;
@@ -860,6 +879,12 @@ export class CahierComponent implements OnInit {
       this.goToStep3();
     } else if (typeOption === 'Chargement Wagon Farine') {
       this.operationForm.patchValue({ produit: 'Farine' });
+      this.goToStep3();
+    } else if (typeOption === 'Chargement Camion Riz') {
+      this.operationForm.patchValue({ produit: 'RIZ' });
+      this.goToStep3();
+    } else if (typeOption === 'Chargement Camion Sucre') {
+      this.operationForm.patchValue({ produit: 'SUCRE' });
       this.goToStep3();
     } else if (typeOption !== 'Chargement des wagons' && typeOption !== 'Chargement wagons') {
       this.goToStep3();

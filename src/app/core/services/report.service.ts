@@ -1,6 +1,6 @@
 import { Injectable, inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
-import { DailyReport, CalculatedReportTotals } from '../../shared/models/report.model';
+import { DailyReport, CalculatedReportTotals, ReportOperationRubric } from '../../shared/models/report.model';
 import { CahierService } from './cahier.service';
 import { SupabaseService } from './supabase.service';
 import { AuthService } from './auth.service';
@@ -24,6 +24,77 @@ export class ReportService {
   private readonly isBrowser = isPlatformBrowser(this.platformId);
 
   private readonly LOCAL_STORAGE_KEY = 'gap_daily_reports_local_v2';
+
+  /**
+   * Retourne les types d'opérations par défaut selon le site
+   * SCMC et AFISA partagent la même structure exacte.
+   */
+  getDefaultRubricsForSite(site: string): string[] {
+    const s = (site || '').trim().toUpperCase();
+    if (s === 'SCMC' || s === 'AFISA') {
+      return ['Chargement Farine', 'Transfert Farine', 'Déchargement Farine', 'Son', 'Déchargement Blé', 'Reconditionnement'];
+    }
+    if (s === 'TUSCANI') {
+      return ['Chargement Camions', 'Chargement Wagons Blé', 'Chargement Wagons Farine', 'Déchargement Wagons Blé', 'Déchargement Camions Blé'];
+    }
+    if (s === 'BOLLORÉ' || s === 'BOLLORE') {
+      return ['Chargement Camions', 'Chargement Wagon Blé', 'Chargement Wagon Farine', 'Chargement Camion Riz', 'Chargement Camion Sucre'];
+    }
+    return ['Chargement', 'Déchargement', 'Transfert', 'Reconditionnement'];
+  }
+
+  /**
+   * Récupère les rubriques dynamiques d'opérations de la semaine :
+   * En priorité, les types d'opérations (tableaux) effectivement renseignés dans la semaine du cahier.
+   * Si aucun tableau n'a encore été saisi, retourne les rubriques par défaut du site.
+   */
+  getRubricsForWeek(site: string, week: WorkWeek | null): string[] {
+    const s = (site || '').trim().toUpperCase();
+    const defaults = this.getDefaultRubricsForSite(s);
+
+    if (!week) return defaults;
+
+    const allOps = [...this.cahierService.operations(), ...this.cahierService.adminOperations()];
+    const normalizedSite = this.normalizeText(site);
+
+    const weekOps = allOps.filter(op => {
+      if (!op || op.status === 'ANNULE' || op.status === 'SUPPRIME') return false;
+      const opSite = this.normalizeText(op.site);
+      if (opSite !== normalizedSite) return false;
+
+      if (op.week_id && week.id && op.week_id === week.id) return true;
+      if (week.start_date && week.end_date) {
+        const opDate = this.normalizeDateStr(op.is_rattrapage && op.real_date ? op.real_date : op.date);
+        return opDate >= week.start_date && opDate <= week.end_date;
+      }
+      return false;
+    });
+
+    const typesInWeek = new Set<string>();
+    for (const op of weekOps) {
+      if (op.type && op.type.trim().length > 0) {
+        typesInWeek.add(op.type.trim());
+      }
+    }
+
+    if (typesInWeek.size === 0) {
+      return defaults;
+    }
+
+    // Préserver un ordre logique : ceux de defaults qui sont présents, puis les nouveaux éventuels
+    const ordered: string[] = [];
+    for (const d of defaults) {
+      if (typesInWeek.has(d)) {
+        ordered.push(d);
+        typesInWeek.delete(d);
+      }
+    }
+    for (const extra of typesInWeek) {
+      ordered.push(extra);
+    }
+
+    return ordered.length > 0 ? ordered : defaults;
+  }
 
   /**
    * Trouve la semaine active pour un site.
@@ -164,9 +235,9 @@ export class ReportService {
   }
 
   /**
-   * Calcul synchrone depuis le state local + asynchrone si vide.
+   * Calcul des totaux par type d'opération depuis le cahier de caisse pour une date donnée.
    */
-  async calculateTotalsFromOperations(site: string, date: string): Promise<CalculatedReportTotals> {
+  async calculateTotalsFromOperations(site: string, date: string, expectedRubrics?: string[]): Promise<CalculatedReportTotals> {
     const targetSite = this.normalizeText(site);
     const targetDate = this.normalizeDateStr(date);
 
@@ -207,15 +278,13 @@ export class ReportService {
       }
     }
 
-    let chargements = 0;
-    let transferts = 0;
-    let son = 0;
-    let dechargements = 0;
+    // Agrégation des montants par type d'opération
+    const amountsByType = new Map<string, number>();
 
     for (const op of operationsToProcess) {
       if (op.status === 'ANNULE' || op.status === 'SUPPRIME') continue;
 
-      const typeNorm = this.normalizeText(op.type);
+      const opType = (op.type || 'Autre').trim();
       let opAmount = 0;
 
       if (op.items && op.items.length > 0) {
@@ -235,24 +304,33 @@ export class ReportService {
         opAmount = (fallbackMontant > 0) ? fallbackMontant : (fallbackQte * fallbackPu);
       }
 
-      if (typeNorm.includes('dechargement')) {
-        dechargements += opAmount;
-      } else if (typeNorm.includes('transfert')) {
-        transferts += opAmount;
-      } else if (typeNorm.includes('son')) {
-        son += opAmount;
-      } else if (typeNorm.includes('chargement') || typeNorm.includes('wagon') || typeNorm.includes('camion')) {
-        chargements += opAmount;
+      amountsByType.set(opType, (amountsByType.get(opType) || 0) + opAmount);
+    }
+
+    const rubrics: ReportOperationRubric[] = [];
+    const baseRubricsList = expectedRubrics && expectedRubrics.length > 0 
+      ? expectedRubrics 
+      : this.getDefaultRubricsForSite(site);
+
+    const processedTypes = new Set<string>();
+
+    for (const rType of baseRubricsList) {
+      const amt = amountsByType.get(rType) || 0;
+      rubrics.push({ type: rType, amount: amt });
+      processedTypes.add(rType);
+    }
+
+    // Ajouter les types d'opérations présents dans la journée mais absents de la liste initiale
+    for (const [foundType, amt] of amountsByType.entries()) {
+      if (!processedTypes.has(foundType)) {
+        rubrics.push({ type: foundType, amount: amt });
       }
     }
 
-    const totalGeneral = chargements + transferts + son + dechargements;
+    const totalGeneral = rubrics.reduce((sum, r) => sum + r.amount, 0);
 
     return {
-      chargements,
-      transferts,
-      son,
-      dechargements,
+      rubrics,
       totalGeneral
     };
   }
@@ -304,16 +382,14 @@ export class ReportService {
   isReportFilled(report: DailyReport | null | undefined): boolean {
     if (!report) return false;
 
-    const chargements = Number(report.total_chargements) || 0;
-    const transferts = Number(report.total_transferts) || 0;
-    const son = Number(report.total_son) || 0;
-    const dechargements = Number(report.total_dechargements) || 0;
+    const rubricsSum = (report.operation_rubrics || []).reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
+    const legacySum = (Number(report.total_chargements) || 0) + (Number(report.total_transferts) || 0) + (Number(report.total_son) || 0) + (Number(report.total_dechargements) || 0);
     const customItemsSum = (report.custom_items || []).reduce((sum, it) => sum + (Number(it.amount) || 0), 0);
     const effectif = Number(report.effectif_declare) || 0;
     const hasPresents = !!(report.presents_noms && report.presents_noms.trim().length > 0);
     const hasRemarques = !!(report.remarques && report.remarques.trim().length > 0);
 
-    const totalGeneral = chargements + transferts + son + dechargements + customItemsSum;
+    const totalGeneral = Number(report.total_general) || (rubricsSum + legacySum + customItemsSum);
 
     return totalGeneral > 0 || effectif > 0 || hasPresents || hasRemarques;
   }

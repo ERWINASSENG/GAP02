@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { CahierService } from '../../../core/services/cahier.service';
 import { ReportService } from '../../../core/services/report.service';
 import { AuthService } from '../../../core/services/auth.service';
-import { DailyReport } from '../../../shared/models/report.model';
+import { DailyReport, ReportOperationRubric } from '../../../shared/models/report.model';
 import { WorkWeek } from '../../../shared/models/cahier.model';
 
 export type ReportViewMode = 'weeks-list' | 'week-detail' | 'day-form';
@@ -31,7 +31,7 @@ export class RapportComponent implements OnInit {
   readonly authService = inject(AuthService);
 
   // Sites de production réels
-  readonly DEFAULT_SITES = ['SCMC', 'TUSCANI', 'AFISA', 'AUTRE'];
+  readonly DEFAULT_SITES = ['SCMC', 'TUSCANI', 'AFISA', 'BOLLORÉ', 'AUTRE'];
 
   // Sites autorisés/disponibles pour l'utilisateur connecté
   readonly availableSites = computed<string[]>(() => {
@@ -73,11 +73,8 @@ export class RapportComponent implements OnInit {
   // Date actuellement éditée dans la vue 'day-form'
   readonly selectedDate = signal<string>(new Date().toISOString().split('T')[0]);
 
-  // Données du rapport quotidien en cours d'édition
-  readonly totalChargements = signal<number | null>(null);
-  readonly totalTransferts = signal<number | null>(null);
-  readonly totalSon = signal<number | null>(null);
-  readonly totalDechargements = signal<number | null>(null);
+  // Rubriques dynamiques du rapport quotidien en cours d'édition (basées sur les tableaux saisis de la semaine)
+  readonly operationRubrics = signal<ReportOperationRubric[]>([]);
 
   // Éléments personnalisés supplémentaires
   readonly customItems = signal<{ label: string; amount: number | null }[]>([]);
@@ -182,6 +179,11 @@ export class RapportComponent implements OnInit {
     return formatted.charAt(0).toUpperCase() + formatted.slice(1);
   });
 
+  // Somme totale des rubriques d'opérations
+  readonly rubricsTotal = computed(() => {
+    return this.operationRubrics().reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+  });
+
   // Somme totale des éléments personnalisés
   readonly customItemsTotal = computed(() => {
     return this.customItems().reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
@@ -189,13 +191,7 @@ export class RapportComponent implements OnInit {
 
   // TOTAL DE LA JOURNÉE
   readonly computedTotalGeneral = computed(() => {
-    return (
-      (Number(this.totalChargements()) || 0) +
-      (Number(this.totalTransferts()) || 0) +
-      (Number(this.totalSon()) || 0) +
-      (Number(this.totalDechargements()) || 0) +
-      this.customItemsTotal()
-    );
+    return this.rubricsTotal() + this.customItemsTotal();
   });
 
   async ngOnInit(): Promise<void> {
@@ -292,14 +288,45 @@ export class RapportComponent implements OnInit {
    */
   async loadDayReportData(dateStr: string): Promise<void> {
     const site = this.selectedSite();
+    const week = this.selectedWeek();
+    const weekRubrics = this.reportService.getRubricsForWeek(site, week);
     const existing = await this.reportService.getReport(site, dateStr);
 
     if (existing) {
       this.currentDayReportLoaded.set(existing);
-      this.totalChargements.set(existing.total_chargements ? existing.total_chargements : null);
-      this.totalTransferts.set(existing.total_transferts ? existing.total_transferts : null);
-      this.totalSon.set(existing.total_son ? existing.total_son : null);
-      this.totalDechargements.set(existing.total_dechargements ? existing.total_dechargements : null);
+
+      if (existing.operation_rubrics && existing.operation_rubrics.length > 0) {
+        // Combiner avec les rubriques de la semaine
+        const existingMap = new Map(existing.operation_rubrics.map(r => [r.type, r.amount]));
+        const merged: ReportOperationRubric[] = [];
+        const processed = new Set<string>();
+
+        for (const wr of weekRubrics) {
+          merged.push({ type: wr, amount: existingMap.get(wr) ?? 0 });
+          processed.add(wr);
+        }
+        for (const er of existing.operation_rubrics) {
+          if (!processed.has(er.type)) {
+            merged.push(er);
+          }
+        }
+        this.operationRubrics.set(merged);
+      } else {
+        // Rétrocompatibilité avec les anciens rapports
+        const rubricsList: ReportOperationRubric[] = [];
+        const legacyMap: Record<string, number> = {
+          'Chargement Farine': Number(existing.total_chargements) || 0,
+          'Transfert Farine': Number(existing.total_transferts) || 0,
+          'Déchargement Farine': Number(existing.total_dechargements) || 0,
+          'Son': Number(existing.total_son) || 0,
+        };
+
+        for (const wr of weekRubrics) {
+          rubricsList.push({ type: wr, amount: legacyMap[wr] ?? 0 });
+        }
+        this.operationRubrics.set(rubricsList);
+      }
+
       this.customItems.set((existing.custom_items || []).map(i => ({ label: i.label, amount: i.amount ? i.amount : null })));
       this.effectifDeclare.set(existing.effectif_declare ? existing.effectif_declare : null);
       this.presentsNoms.set(existing.presents_noms ?? '');
@@ -325,13 +352,25 @@ export class RapportComponent implements OnInit {
 
   private async recalculateFromCahierForDate(dateStr: string): Promise<void> {
     const site = this.selectedSite();
-    const calc = await this.reportService.calculateTotalsFromOperations(site, dateStr);
+    const week = this.selectedWeek();
+    const weekRubrics = this.reportService.getRubricsForWeek(site, week);
+    const calc = await this.reportService.calculateTotalsFromOperations(site, dateStr, weekRubrics);
 
-    this.totalChargements.set(calc.chargements ? calc.chargements : null);
-    this.totalTransferts.set(calc.transferts ? calc.transferts : null);
-    this.totalSon.set(calc.son ? calc.son : null);
-    this.totalDechargements.set(calc.dechargements ? calc.dechargements : null);
+    this.operationRubrics.set(calc.rubrics);
     this.isManuallyModified.set(false);
+  }
+
+  /**
+   * Mise à jour du montant d'une rubrique d'opération
+   */
+  updateRubricAmount(index: number, val: number | null | string): void {
+    const current = [...this.operationRubrics()];
+    if (index >= 0 && index < current.length) {
+      const parsed = val === null || val === undefined || val === '' || isNaN(Number(val)) ? 0 : Number(val);
+      current[index] = { ...current[index], amount: parsed };
+      this.operationRubrics.set(current);
+      this.onValueManualChange();
+    }
   }
 
   // Éléments personnalisés
@@ -376,15 +415,23 @@ export class RapportComponent implements OnInit {
     const week = this.selectedWeek();
     const site = this.selectedSite();
     const date = this.selectedDate();
+    const rubrics = this.operationRubrics().map(r => ({ type: r.type, amount: Number(r.amount) || 0 }));
+
+    // Fallback champs legacy
+    const chargements = rubrics.filter(r => r.type.toLowerCase().includes('chargement') || r.type.toLowerCase().includes('wagon') || r.type.toLowerCase().includes('camion')).reduce((s, r) => s + r.amount, 0);
+    const transferts = rubrics.filter(r => r.type.toLowerCase().includes('transfert')).reduce((s, r) => s + r.amount, 0);
+    const son = rubrics.filter(r => r.type.toLowerCase().includes('son')).reduce((s, r) => s + r.amount, 0);
+    const dechargements = rubrics.filter(r => r.type.toLowerCase().includes('dechargement')).reduce((s, r) => s + r.amount, 0);
 
     const report: DailyReport = {
       site,
       date,
       week_id: week?.id,
-      total_chargements: Number(this.totalChargements()) || 0,
-      total_transferts: Number(this.totalTransferts()) || 0,
-      total_son: Number(this.totalSon()) || 0,
-      total_dechargements: Number(this.totalDechargements()) || 0,
+      operation_rubrics: rubrics,
+      total_chargements: chargements,
+      total_transferts: transferts,
+      total_son: son,
+      total_dechargements: dechargements,
       custom_items: this.customItems().map(item => ({ label: item.label, amount: Number(item.amount) || 0 })),
       total_general: this.computedTotalGeneral(),
       effectif_declare: Number(this.effectifDeclare()) || 0,
