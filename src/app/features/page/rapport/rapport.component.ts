@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { CahierService } from '../../../core/services/cahier.service';
 import { ReportService } from '../../../core/services/report.service';
 import { AuthService } from '../../../core/services/auth.service';
-import { DailyReport, CustomReportItem } from '../../../shared/models/report.model';
+import { DailyReport } from '../../../shared/models/report.model';
 import { WorkWeek } from '../../../shared/models/cahier.model';
 
 export type ReportViewMode = 'weeks-list' | 'week-detail' | 'day-form';
@@ -74,15 +74,15 @@ export class RapportComponent implements OnInit {
   readonly selectedDate = signal<string>(new Date().toISOString().split('T')[0]);
 
   // Données du rapport quotidien en cours d'édition
-  readonly totalChargements = signal<number>(0);
-  readonly totalTransferts = signal<number>(0);
-  readonly totalSon = signal<number>(0);
-  readonly totalDechargements = signal<number>(0);
+  readonly totalChargements = signal<number | null>(null);
+  readonly totalTransferts = signal<number | null>(null);
+  readonly totalSon = signal<number | null>(null);
+  readonly totalDechargements = signal<number | null>(null);
 
   // Éléments personnalisés supplémentaires
-  readonly customItems = signal<CustomReportItem[]>([]);
+  readonly customItems = signal<{ label: string; amount: number | null }[]>([]);
 
-  readonly effectifDeclare = signal<number>(0);
+  readonly effectifDeclare = signal<number | null>(null);
   readonly presentsNoms = signal<string>('');
   readonly remarques = signal<string>('');
 
@@ -264,19 +264,19 @@ export class RapportComponent implements OnInit {
     const existing = await this.reportService.getReport(site, dateStr);
 
     if (existing) {
-      this.totalChargements.set(existing.total_chargements ?? 0);
-      this.totalTransferts.set(existing.total_transferts ?? 0);
-      this.totalSon.set(existing.total_son ?? 0);
-      this.totalDechargements.set(existing.total_dechargements ?? 0);
-      this.customItems.set(existing.custom_items || []);
-      this.effectifDeclare.set(existing.effectif_declare ?? 0);
+      this.totalChargements.set(existing.total_chargements ? existing.total_chargements : null);
+      this.totalTransferts.set(existing.total_transferts ? existing.total_transferts : null);
+      this.totalSon.set(existing.total_son ? existing.total_son : null);
+      this.totalDechargements.set(existing.total_dechargements ? existing.total_dechargements : null);
+      this.customItems.set((existing.custom_items || []).map(i => ({ label: i.label, amount: i.amount ? i.amount : null })));
+      this.effectifDeclare.set(existing.effectif_declare ? existing.effectif_declare : null);
       this.presentsNoms.set(existing.presents_noms ?? '');
       this.remarques.set(existing.remarques ?? '');
       this.isManuallyModified.set(false);
     } else {
       await this.recalculateFromCahierForDate(dateStr);
       this.customItems.set([]);
-      this.effectifDeclare.set(0);
+      this.effectifDeclare.set(null);
       this.presentsNoms.set('');
       this.remarques.set('');
       this.isManuallyModified.set(false);
@@ -294,16 +294,16 @@ export class RapportComponent implements OnInit {
     const site = this.selectedSite();
     const calc = await this.reportService.calculateTotalsFromOperations(site, dateStr);
 
-    this.totalChargements.set(calc.chargements);
-    this.totalTransferts.set(calc.transferts);
-    this.totalSon.set(calc.son);
-    this.totalDechargements.set(calc.dechargements);
+    this.totalChargements.set(calc.chargements ? calc.chargements : null);
+    this.totalTransferts.set(calc.transferts ? calc.transferts : null);
+    this.totalSon.set(calc.son ? calc.son : null);
+    this.totalDechargements.set(calc.dechargements ? calc.dechargements : null);
     this.isManuallyModified.set(false);
   }
 
   // Éléments personnalisés
   addCustomItem(): void {
-    this.customItems.set([...this.customItems(), { label: '', amount: 0 }]);
+    this.customItems.set([...this.customItems(), { label: '', amount: null }]);
     this.onValueManualChange();
   }
 
@@ -321,9 +321,9 @@ export class RapportComponent implements OnInit {
     this.onValueManualChange();
   }
 
-  updateCustomItemAmount(index: number, amount: number): void {
+  updateCustomItemAmount(index: number, amount: number | null): void {
     const current = [...this.customItems()];
-    current[index] = { ...current[index], amount: Number(amount) || 0 };
+    current[index] = { ...current[index], amount: amount === null || isNaN(Number(amount)) || Number(amount) === 0 ? null : Number(amount) };
     this.customItems.set(current);
     this.onValueManualChange();
   }
@@ -350,7 +350,7 @@ export class RapportComponent implements OnInit {
       total_transferts: Number(this.totalTransferts()) || 0,
       total_son: Number(this.totalSon()) || 0,
       total_dechargements: Number(this.totalDechargements()) || 0,
-      custom_items: this.customItems(),
+      custom_items: this.customItems().map(item => ({ label: item.label, amount: Number(item.amount) || 0 })),
       total_general: this.computedTotalGeneral(),
       effectif_declare: Number(this.effectifDeclare()) || 0,
       presents_noms: this.presentsNoms() || '',
