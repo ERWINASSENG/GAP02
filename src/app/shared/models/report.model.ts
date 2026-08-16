@@ -35,3 +35,15 @@ export interface CalculatedReportTotals {
   rubrics: ReportOperationRubric[];
   totalGeneral: number;
 }
+
+export interface RubricDetailItem {
+  operationId?: string;
+  dn?: string;
+  matricule?: string;
+  produit?: string;
+  qte: number;
+  pu: number;
+  montant: number;
+  heure?: string;
+  date: string;
+}

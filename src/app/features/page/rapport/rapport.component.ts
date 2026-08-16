@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { CahierService } from '../../../core/services/cahier.service';
 import { ReportService } from '../../../core/services/report.service';
 import { AuthService } from '../../../core/services/auth.service';
-import { DailyReport, ReportOperationRubric } from '../../../shared/models/report.model';
+import { DailyReport, ReportOperationRubric, RubricDetailItem } from '../../../shared/models/report.model';
 import { WorkWeek } from '../../../shared/models/cahier.model';
 
 export type ReportViewMode = 'weeks-list' | 'week-detail' | 'day-form';
@@ -119,6 +119,20 @@ export class RapportComponent implements OnInit {
   readonly saveSuccess = signal<boolean>(false);
   readonly saveSuccessMessage = signal<string>('');
   readonly isManuallyModified = signal<boolean>(false);
+
+  // Modale de contrôle du détail du Cahier de caisse pour une rubrique
+  readonly activeDetailRubric = signal<string | null>(null);
+  readonly rubricDetailItems = signal<RubricDetailItem[]>([]);
+  readonly isDetailModalOpen = signal<boolean>(false);
+  readonly isLoadingRubricDetail = signal<boolean>(false);
+
+  readonly detailTotalAmount = computed(() => {
+    return this.rubricDetailItems().reduce((sum, item) => sum + (Number(item.montant) || 0), 0);
+  });
+
+  readonly detailTotalQte = computed(() => {
+    return this.rubricDetailItems().reduce((sum, item) => sum + (Number(item.qte) || 0), 0);
+  });
 
   // Semaine en cours par défaut pour le site
   readonly currentWeek = computed<WorkWeek | null>(() => {
@@ -487,5 +501,33 @@ export class RapportComponent implements OnInit {
     } else {
       this.backToWeeksList();
     }
+  }
+
+  /**
+   * Afficher la liste exacte des lignes du Cahier pour la rubrique et la date sélectionnées
+   */
+  async openRubricDetail(rubricType: string): Promise<void> {
+    this.activeDetailRubric.set(rubricType);
+    this.isDetailModalOpen.set(true);
+    this.isLoadingRubricDetail.set(true);
+    try {
+      const items = await this.reportService.getRubricDetailItems(
+        this.selectedSite(),
+        this.selectedDate(),
+        rubricType
+      );
+      this.rubricDetailItems.set(items);
+    } catch (e) {
+      console.error('Erreur chargement détails de la rubrique:', e);
+      this.rubricDetailItems.set([]);
+    } finally {
+      this.isLoadingRubricDetail.set(false);
+    }
+  }
+
+  closeRubricDetail(): void {
+    this.isDetailModalOpen.set(false);
+    this.activeDetailRubric.set(null);
+    this.rubricDetailItems.set([]);
   }
 }

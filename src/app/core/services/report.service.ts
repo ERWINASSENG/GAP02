@@ -1,6 +1,6 @@
 import { Injectable, inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
-import { DailyReport, CalculatedReportTotals, ReportOperationRubric } from '../../shared/models/report.model';
+import { DailyReport, CalculatedReportTotals, ReportOperationRubric, RubricDetailItem } from '../../shared/models/report.model';
 import { CahierService } from './cahier.service';
 import { SupabaseService } from './supabase.service';
 import { AuthService } from './auth.service';
@@ -339,6 +339,105 @@ export class ReportService {
       rubrics,
       totalGeneral
     };
+  }
+
+  /**
+   * Extrait la liste détaillée des lignes du Cahier de caisse ayant servi au calcul d'une rubrique pour un jour donné.
+   */
+  async getRubricDetailItems(site: string, date: string, rubricType: string): Promise<RubricDetailItem[]> {
+    const targetSite = this.normalizeText(site);
+    const targetDate = this.normalizeDateStr(date);
+    const targetRubric = this.normalizeText(rubricType);
+
+    let operationsToProcess: Operation[] = [];
+    const localOps = [...this.cahierService.operations(), ...this.cahierService.adminOperations()];
+    const seenOpIds = new Set<string>();
+
+    const filteredLocal = localOps.filter(op => {
+      if (!op || op.status === 'ANNULE' || op.status === 'SUPPRIME') return false;
+      const opSite = this.normalizeText(op.site);
+      if (opSite !== targetSite) return false;
+
+      if (op.id) {
+        if (seenOpIds.has(op.id)) return false;
+        seenOpIds.add(op.id);
+      }
+      return true;
+    });
+
+    if (filteredLocal.length > 0) {
+      operationsToProcess = filteredLocal;
+    } else {
+      try {
+        const client = this.supabaseService.client;
+        const { data, error } = await client
+          .from('operations')
+          .select('*, items:operation_items(*)')
+          .ilike('site', site);
+
+        if (!error && data) {
+          operationsToProcess = data as Operation[];
+        }
+      } catch (e) {
+        console.warn('Erreur récupération des opérations pour le détail:', e);
+      }
+    }
+
+    const detailItems: RubricDetailItem[] = [];
+
+    for (const op of operationsToProcess) {
+      if (op.status === 'ANNULE' || op.status === 'SUPPRIME') continue;
+
+      const opType = this.normalizeText(op.type || 'Autre');
+      if (opType !== targetRubric) continue;
+
+      if (op.items && op.items.length > 0) {
+        for (const item of op.items) {
+          const itemDate = this.normalizeDateStr(item.date || op.date);
+          if (itemDate === targetDate) {
+            const qte = Number(item.qte) || 0;
+            const pu = Number(item.pu) || 0;
+            const explicitMontant = Number(item.montant) || 0;
+            const montant = (explicitMontant > 0) ? explicitMontant : (qte * pu);
+
+            detailItems.push({
+              operationId: op.id,
+              dn: item.dn || '',
+              matricule: item.matricule || '',
+              produit: item.produit || op.produit || '',
+              qte,
+              pu,
+              montant,
+              heure: op.heure || '',
+              date: itemDate
+            });
+          }
+        }
+      } else {
+        const rawOpDate = op.is_rattrapage && op.real_date ? op.real_date : op.date;
+        const opDate = this.normalizeDateStr(rawOpDate);
+        if (opDate === targetDate) {
+          const fallbackPu = Number(op.prix_unitaire) || 0;
+          const fallbackQte = Number(op.quantite) || 0;
+          const fallbackMontant = Number(op.montant_total) || 0;
+          const montant = (fallbackMontant > 0) ? fallbackMontant : (fallbackQte * fallbackPu);
+
+          detailItems.push({
+            operationId: op.id,
+            dn: op.details || '',
+            matricule: op.destination || '',
+            produit: op.produit || '',
+            qte: fallbackQte,
+            pu: fallbackPu,
+            montant,
+            heure: op.heure || '',
+            date: opDate
+          });
+        }
+      }
+    }
+
+    return detailItems;
   }
 
   /**
