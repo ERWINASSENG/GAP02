@@ -117,7 +117,6 @@ export class ReportService {
     const allWeeks = [...this.cahierService.weeks(), ...this.cahierService.adminWeeks()];
     const normalizedSite = (site || '').trim().toLowerCase();
     
-    // Déduplication par ID et par clé composite (site, start_date)
     const seenIds = new Set<string>();
     const seenSiteDates = new Set<string>();
     const uniqueWeeks: WorkWeek[] = [];
@@ -236,6 +235,7 @@ export class ReportService {
 
   /**
    * Calcul des totaux par type d'opération depuis le cahier de caisse pour une date donnée.
+   * Respecte rigoureusement la date de chaque ligne individuelle de chaque tableau d'opérations.
    */
   async calculateTotalsFromOperations(site: string, date: string, expectedRubrics?: string[]): Promise<CalculatedReportTotals> {
     const targetSite = this.normalizeText(site);
@@ -248,9 +248,7 @@ export class ReportService {
     const filteredLocal = localOps.filter(op => {
       if (!op || op.status === 'ANNULE' || op.status === 'SUPPRIME') return false;
       const opSite = this.normalizeText(op.site);
-      const rawOpDate = op.is_rattrapage && op.real_date ? op.real_date : op.date;
-      const opDate = this.normalizeDateStr(rawOpDate);
-      if (opSite !== targetSite || opDate !== targetDate) return false;
+      if (opSite !== targetSite) return false;
       
       if (op.id) {
         if (seenOpIds.has(op.id)) return false;
@@ -267,8 +265,7 @@ export class ReportService {
         const { data, error } = await client
           .from('operations')
           .select('*, items:operation_items(*)')
-          .ilike('site', site)
-          .or(`date.eq.${targetDate},real_date.eq.${targetDate}`);
+          .ilike('site', site);
 
         if (!error && data) {
           operationsToProcess = data as Operation[];
@@ -278,33 +275,42 @@ export class ReportService {
       }
     }
 
-    // Agrégation des montants par type d'opération
+    // Agrégation des montants par type d'opération en filtrant STRICTEMENT sur la date cible
     const amountsByType = new Map<string, number>();
 
     for (const op of operationsToProcess) {
       if (op.status === 'ANNULE' || op.status === 'SUPPRIME') continue;
 
       const opType = (op.type || 'Autre').trim();
-      let opAmount = 0;
+      let dayAmountForThisOp = 0;
 
       if (op.items && op.items.length > 0) {
-        opAmount = op.items.reduce((sum, item) => {
-          const qte = Number(item.qte) || 0;
-          const pu = Number(item.pu) || 0;
-          const explicitMontant = Number(item.montant) || 0;
-          
-          const itemAmount = (explicitMontant > 0) ? explicitMontant : (qte * pu);
-          return sum + itemAmount;
-        }, 0);
+        // Le tableau contient des sous-lignes : filtrer chaque ligne par sa date spécifique
+        for (const item of op.items) {
+          const itemDate = this.normalizeDateStr(item.date || op.date);
+          if (itemDate === targetDate) {
+            const qte = Number(item.qte) || 0;
+            const pu = Number(item.pu) || 0;
+            const explicitMontant = Number(item.montant) || 0;
+            const itemAmount = (explicitMontant > 0) ? explicitMontant : (qte * pu);
+            dayAmountForThisOp += itemAmount;
+          }
+        }
       } else {
-        const fallbackPu = Number(op.prix_unitaire) || 0;
-        const fallbackQte = Number(op.quantite) || 0;
-        const fallbackMontant = Number(op.montant_total) || 0;
-
-        opAmount = (fallbackMontant > 0) ? fallbackMontant : (fallbackQte * fallbackPu);
+        // Opération simple sans sous-lignes : vérifier la date principale de l'opération
+        const rawOpDate = op.is_rattrapage && op.real_date ? op.real_date : op.date;
+        const opDate = this.normalizeDateStr(rawOpDate);
+        if (opDate === targetDate) {
+          const fallbackPu = Number(op.prix_unitaire) || 0;
+          const fallbackQte = Number(op.quantite) || 0;
+          const fallbackMontant = Number(op.montant_total) || 0;
+          dayAmountForThisOp = (fallbackMontant > 0) ? fallbackMontant : (fallbackQte * fallbackPu);
+        }
       }
 
-      amountsByType.set(opType, (amountsByType.get(opType) || 0) + opAmount);
+      if (dayAmountForThisOp > 0) {
+        amountsByType.set(opType, (amountsByType.get(opType) || 0) + dayAmountForThisOp);
+      }
     }
 
     const rubrics: ReportOperationRubric[] = [];
@@ -320,7 +326,7 @@ export class ReportService {
       processedTypes.add(rType);
     }
 
-    // Ajouter les types d'opérations présents dans la journée mais absents de la liste initiale
+    // Ajouter les types d'opérations avec montants trouvés ce jour mais absents de la liste initiale
     for (const [foundType, amt] of amountsByType.entries()) {
       if (!processedTypes.has(foundType)) {
         rubrics.push({ type: foundType, amount: amt });
