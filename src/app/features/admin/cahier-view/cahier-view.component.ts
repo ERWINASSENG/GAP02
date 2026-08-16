@@ -55,6 +55,9 @@ export class AdminCahierViewComponent {
   readonly selectedWeekId = signal<string | null>(null);
   readonly selectedSiteFilter = signal<string>('TOUS');
   readonly selectedStatusFilter = signal<'ALL' | 'ACTIVE' | 'CLOSED' | 'DELETED'>('ALL');
+  readonly showFilterMenu = signal<boolean>(false);
+
+  readonly hasActiveFilters = computed(() => this.selectedSiteFilter() !== 'TOUS' || this.selectedStatusFilter() !== 'ALL');
 
   // Semaines enrichies avec leurs statistiques
   readonly weeksWithStats = computed<WeekWithStats[]>(() => {
