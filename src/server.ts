@@ -4,6 +4,7 @@ import {
   writeResponseToNodeResponse,
 } from '@angular/ssr/node';
 import express from 'express';
+import rateLimit from 'express-rate-limit';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createClient } from '@supabase/supabase-js';
@@ -15,6 +16,21 @@ const app = express();
 const angularApp = new AngularNodeAppEngine();
 
 app.use(express.json());
+
+// Limiteur de débit (Rate Limiting) pour sécuriser les routes d'API
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // Fenêtre de 15 minutes
+  max: 300, // Limite à 300 requêtes par fenêtre par IP
+  standardHeaders: true, // Renvoie les headers `RateLimit-*` standard
+  legacyHeaders: false, // Désactive les headers `X-RateLimit-*` obsolètes
+  message: {
+    error: 'Trop de requêtes effectuées depuis cette adresse IP. Veuillez patienter 15 minutes avant de réessayer.',
+    statusCode: 429,
+  },
+});
+
+// Application du rate limiter sur tous les endpoints d'API
+app.use('/api', apiLimiter);
 
 // API: Créer un utilisateur via le serveur (rôle administrateur requis)
 app.post('/api/system/collaborators', async (req, res) => {
