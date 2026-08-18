@@ -433,16 +433,33 @@
                   <table class="w-full text-center border-collapse border border-slate-300 dark:border-slate-700 text-xs sm:text-sm">
                     <thead>
                       <tr class="bg-slate-100 dark:bg-slate-950 border-b border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-center font-bold tracking-wider uppercase text-xs">
-                        <th class="px-2 py-2.5 sm:px-4 sm:py-3 border border-slate-300 dark:border-slate-700" colspan="8">
+                        <th class="px-2 py-2.5 sm:px-4 sm:py-3 border border-slate-300 dark:border-slate-700"
+                            [attr.colspan]="getTableColspan(group)">
                           {{ getGroupTitle(group) }}
                         </th>
                       </tr>
                       <tr class="bg-slate-50 dark:bg-slate-950 text-slate-500 dark:text-slate-400 text-[11px] font-bold uppercase tracking-wider">
                         <th class="px-2 py-2 sm:px-4 sm:py-3 border border-slate-300 dark:border-slate-700 text-center">Date</th>
-                        <th class="px-2 py-2 sm:px-4 sm:py-3 border border-slate-300 dark:border-slate-700 text-center whitespace-nowrap">DN / LTI / ISTI</th>
-                        <th class="px-2 py-2 sm:px-4 sm:py-3 border border-slate-300 dark:border-slate-700 text-center whitespace-nowrap">Matricule</th>
+                        
+                        @if (isGroupDn(group)) {
+                          <th class="px-2 py-2 sm:px-4 sm:py-3 border border-slate-300 dark:border-slate-700 text-center whitespace-nowrap">N° DN</th>
+                          <th class="px-2 py-2 sm:px-4 sm:py-3 border border-slate-300 dark:border-slate-700 text-center whitespace-nowrap">Matricule</th>
+                        } @else if (isGroupWagon(group)) {
+                          <th class="px-2 py-2 sm:px-4 sm:py-3 border border-slate-300 dark:border-slate-700 text-center whitespace-nowrap">N° Wagon</th>
+                        } @else if (isGroupCamion(group)) {
+                          <th class="px-2 py-2 sm:px-4 sm:py-3 border border-slate-300 dark:border-slate-700 text-center whitespace-nowrap">Matricule</th>
+                        }
+
                         <th class="px-2 py-2 sm:px-4 sm:py-3 border border-slate-300 dark:border-slate-700 text-center">Produit / Désignation</th>
-                        <th class="px-2 py-2 sm:px-4 sm:py-3 border border-slate-300 dark:border-slate-700 text-center">Quantité</th>
+                        
+                        @if (group.type.toLowerCase().includes('blé') || group.type.toLowerCase().includes('ble') || isGroupCamion(group)) {
+                          <th class="px-2 py-2 sm:px-4 sm:py-3 border border-slate-300 dark:border-slate-700 text-center">Tonnage</th>
+                        } @else if (group.type.toLowerCase().includes('farine') || group.type.toLowerCase().includes('son')) {
+                          <th class="px-2 py-2 sm:px-4 sm:py-3 border border-slate-300 dark:border-slate-700 text-center">Nbr sacs</th>
+                        } @else {
+                          <th class="px-2 py-2 sm:px-4 sm:py-3 border border-slate-300 dark:border-slate-700 text-center">Quantité</th>
+                        }
+
                         <th class="px-2 py-2 sm:px-4 sm:py-3 border border-slate-300 dark:border-slate-700 text-center">PU (FCFA)</th>
                         <th class="px-2 py-2 sm:px-4 sm:py-3 border border-slate-300 dark:border-slate-700 text-center">Montant (FCFA)</th>
                         <th class="px-2 py-2 sm:px-4 sm:py-3 w-16 text-center border border-slate-300 dark:border-slate-700">Actions</th>
@@ -452,20 +469,35 @@
                       @for (op of group.ops; track op.id) {
                         @for (item of op.items; track $index; let idx = $index; let len = $count) {
                           <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-all text-xs border-b border-slate-200 dark:border-slate-800">
-                            <!-- Date sur chaque ligne -->
-                            <td class="px-2 py-2 sm:px-4 sm:py-3 border border-slate-300 dark:border-slate-700 text-center font-mono text-slate-500 dark:text-slate-400 align-middle">
-                              {{ formatDateFr(item.date || op.date) }}
+                            <!-- Date sur chaque ligne avec badge rattrapage éventuel -->
+                            <td class="px-2 py-2 sm:px-4 sm:py-3 border border-slate-300 dark:border-slate-700 text-center font-mono text-slate-500 dark:text-slate-400 align-middle whitespace-nowrap">
+                              <div class="flex items-center justify-center gap-1.5 flex-wrap">
+                                <span>{{ formatDateFr(item.date || op.date) }}</span>
+                                @if (op.is_rattrapage) {
+                                  <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-300 dark:border-amber-800">
+                                    Rattrapage
+                                  </span>
+                                }
+                              </div>
                             </td>
 
-                            <!-- DN / LTI / ISTI -->
-                            <td class="px-2 py-2 sm:px-4 sm:py-3 border border-slate-300 dark:border-slate-700 text-center font-mono whitespace-nowrap">
-                              {{ item.dn || '—' }}
-                            </td>
-
-                            <!-- Matricule -->
-                            <td class="px-2 py-2 sm:px-4 sm:py-3 border border-slate-300 dark:border-slate-700 text-center font-mono whitespace-nowrap text-slate-600 dark:text-slate-300">
-                              {{ item.matricule || '—' }}
-                            </td>
+                            <!-- Colonnes d'identifiants dynamiques -->
+                            @if (isGroupDn(group)) {
+                              <td class="px-2 py-2 sm:px-4 sm:py-3 border border-slate-300 dark:border-slate-700 text-center font-mono whitespace-nowrap">
+                                {{ item.dn || '—' }}
+                              </td>
+                              <td class="px-2 py-2 sm:px-4 sm:py-3 border border-slate-300 dark:border-slate-700 text-center font-mono whitespace-nowrap text-slate-600 dark:text-slate-300">
+                                {{ item.matricule || '—' }}
+                              </td>
+                            } @else if (isGroupWagon(group)) {
+                              <td class="px-2 py-2 sm:px-4 sm:py-3 border border-slate-300 dark:border-slate-700 text-center font-mono whitespace-nowrap">
+                                {{ item.dn || item.matricule || op.destination || '—' }}
+                              </td>
+                            } @else if (isGroupCamion(group)) {
+                              <td class="px-2 py-2 sm:px-4 sm:py-3 border border-slate-300 dark:border-slate-700 text-center font-mono whitespace-nowrap">
+                                {{ item.matricule || item.dn || '—' }}
+                              </td>
+                            }
 
                             <!-- Produit -->
                             <td class="px-2 py-2 sm:px-4 sm:py-3 border border-slate-300 dark:border-slate-700 text-center text-slate-800 dark:text-slate-100 font-medium">
@@ -520,9 +552,18 @@
                     </tbody>
                     <tfoot>
                       <tr class="bg-slate-100 dark:bg-slate-950 font-bold text-slate-900 dark:text-white border-t-2 border-slate-300 dark:border-slate-700 text-xs">
-                        <td colspan="6" class="px-4 py-3 text-right uppercase tracking-wider">Total {{ getGroupTitle(group) }} :</td>
-                        <td class="px-4 py-3 text-center text-indigo-600 dark:text-indigo-400 text-sm font-extrabold whitespace-nowrap">{{ getGroupTotal(group) | number:'1.0-0' }} FCFA</td>
-                        <td></td>
+                        <td [attr.colspan]="getFooterColspan(group)" 
+                            class="px-4 py-3 text-center uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                          TOTAL
+                        </td>
+                        <td class="px-4 py-3 text-center font-mono font-bold text-slate-900 dark:text-white">
+                          {{ getGroupTotalQte(group) | number }}
+                        </td>
+                        <td class="border border-slate-300 dark:border-slate-700"></td>
+                        <td class="px-4 py-3 text-center text-indigo-600 dark:text-indigo-400 text-sm font-extrabold whitespace-nowrap">
+                          {{ getGroupTotal(group) | number:'1.0-0' }} FCFA
+                        </td>
+                        <td class="border border-slate-300 dark:border-slate-700"></td>
                       </tr>
                     </tfoot>
                   </table>

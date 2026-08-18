@@ -276,6 +276,62 @@ export class AdminCahierViewComponent {
     return group.ops.reduce((sum, op) => sum + this.getOperationTotal(op), 0);
   }
 
+  getGroupTotalQte(group: TypeSiteGroup): number {
+    let total = 0;
+    group.ops.forEach(op => {
+      if (op && op.items && Array.isArray(op.items)) {
+        op.items.forEach(item => {
+          total += Number(item.qte) || 0;
+        });
+      } else if (op) {
+        total += Number(op.quantite) || 0;
+      }
+    });
+    return total;
+  }
+
+  getOpTotalQte(op: Operation): number {
+    if (op && op.items && Array.isArray(op.items) && op.items.length > 0) {
+      return op.items.reduce((sum, item) => sum + (Number(item.qte) || 0), 0);
+    }
+    return Number(op.quantite) || 0;
+  }
+
+  getOpTotalMontant(op: Operation): number {
+    if (op && op.items && Array.isArray(op.items) && op.items.length > 0) {
+      return op.items.reduce((sum, item) => sum + this.getItemAmount(item), 0);
+    }
+    return Number(op.montant_total) || 0;
+  }
+
+  isGroupDn(group: TypeSiteGroup): boolean {
+    const type = (group.type || '').trim().toLowerCase();
+    const site = (group.site || '').trim().toUpperCase();
+    return (type === 'chargement' || type.includes('chargement')) && !type.includes('wagon') && !type.includes('camion') && (site === 'AFISA' || site === 'SCMC');
+  }
+
+  isGroupWagon(group: TypeSiteGroup): boolean {
+    const type = (group.type || '').trim().toLowerCase();
+    return type.includes('wagon') || type === 'chargement des wagons' || type === 'chargement wagons';
+  }
+
+  isGroupCamion(group: TypeSiteGroup): boolean {
+    const type = (group.type || '').trim().toLowerCase();
+    return type.includes('camion');
+  }
+
+  getTableColspan(group: TypeSiteGroup): number {
+    if (this.isGroupDn(group)) return 8;
+    if (this.isGroupWagon(group) || this.isGroupCamion(group)) return 7;
+    return 6;
+  }
+
+  getFooterColspan(group: TypeSiteGroup): number {
+    if (this.isGroupDn(group)) return 4;
+    if (this.isGroupWagon(group) || this.isGroupCamion(group)) return 3;
+    return 2;
+  }
+
   getIdentifierLabel(op: Operation): string {
     const type = op.type?.toLowerCase() || '';
     return type.includes('wagon') || type.includes('camion')

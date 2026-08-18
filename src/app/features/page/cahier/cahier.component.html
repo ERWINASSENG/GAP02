@@ -1198,7 +1198,7 @@
                 <table class="w-full text-center border-collapse border border-slate-300 dark:border-slate-700 block md:table overflow-x-auto whitespace-nowrap md:whitespace-normal">
                   <thead>
                     <tr class="bg-slate-100 dark:bg-slate-950 border-b border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-center font-bold tracking-wider uppercase text-xs">
-                      <th class="px-2 py-2.5 sm:px-4 sm:py-3 border border-slate-300 dark:border-slate-700" [attr.colspan]="showDn ? 8 : (isRizSucre ? 7 : (isWagon || group.type === 'Chargement Camions' ? 6 : 7))">
+                      <th class="px-2 py-2.5 sm:px-4 sm:py-3 border border-slate-300 dark:border-slate-700" [attr.colspan]="showDn ? 8 : (isRizSucre ? 7 : (isWagon || group.type === 'Chargement Camions' ? 6 : 6))">
                         @if (group.type === 'Chargement des wagons' || group.type === 'Chargement wagons') {
                           CHARGEMENT WAGONS {{ (group.product || '') | uppercase }}@if (selectedSummary()?.site !== 'AUTRE') { {{ ' ' + (selectedSummary()?.site || 'SCMC') | uppercase }} }
                         } @else {
@@ -1391,7 +1391,11 @@
                         </td>
                         <td class="px-2 py-2.5 sm:px-4 sm:py-3 border border-slate-300 dark:border-slate-700"></td>
                       } @else {
-                        <td colspan="4" class="px-2 py-2.5 sm:px-4 sm:py-3 border border-slate-300 dark:border-slate-700 text-center font-bold uppercase tracking-wider text-xs">TOTAL</td>
+                        <td colspan="2" class="px-2 py-2.5 sm:px-4 sm:py-3 border border-slate-300 dark:border-slate-700 text-center font-bold uppercase tracking-wider text-xs">TOTAL</td>
+                        <td class="px-2 py-2.5 sm:px-4 sm:py-3 border border-slate-300 dark:border-slate-700 text-center font-mono font-bold text-slate-800 dark:text-slate-200">
+                          {{ getGroupTotalQte(group.ops) | number }}
+                        </td>
+                        <td class="px-2 py-2.5 sm:px-4 sm:py-3 border border-slate-300 dark:border-slate-700"></td>
                         <td class="px-2 py-2.5 sm:px-4 sm:py-3 border border-slate-300 dark:border-slate-700 text-center font-mono font-bold text-indigo-600 dark:text-indigo-400">
                           {{ getGroupTotalMontant(group.ops) | number }}
                         </td>
