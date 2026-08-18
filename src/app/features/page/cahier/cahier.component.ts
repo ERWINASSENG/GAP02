@@ -566,16 +566,16 @@ export class CahierComponent implements OnInit {
   readonly tableColspan = computed<number>(() => {
     const val = this.formValue();
     if (val.type === 'Chargement des wagons' || val.type === 'Chargement wagons' || val.type === 'Chargement Wagon Blé' || val.type === 'Chargement Wagon Farine') {
-      return 7;
+      return 6;
     }
     if (val.type === 'Chargement Camions') {
-      return 7;
+      return 6;
     }
     if (val.type === 'Chargement Camion Riz' || val.type === 'Chargement Camion Sucre') {
       return 7;
     }
     const isDnActive = val.type === 'Chargement' && (val.site === 'AFISA' || val.site === 'SCMC');
-    return isDnActive ? 8 : 7;
+    return isDnActive ? 8 : 6;
   });
 
   readonly totalColspan = computed<number>(() => {
@@ -1321,6 +1321,20 @@ export class CahierComponent implements OnInit {
       }
     });
     return total;
+  }
+
+  getOpTotalQte(op: Operation): number {
+    if (op && op.items && Array.isArray(op.items) && op.items.length > 0) {
+      return op.items.reduce((sum, item) => sum + (Number(item.qte) || 0), 0);
+    }
+    return Number(op.quantite) || 0;
+  }
+
+  getOpTotalMontant(op: Operation): number {
+    if (op && op.items && Array.isArray(op.items) && op.items.length > 0) {
+      return op.items.reduce((sum, item) => sum + (Number(item.montant) || 0), 0);
+    }
+    return Number(op.montant_total) || 0;
   }
 
 }
