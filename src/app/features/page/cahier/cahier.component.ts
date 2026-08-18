@@ -1,5 +1,5 @@
-import { ChangeDetectionStrategy, Component, inject, signal, computed, OnInit, DestroyRef } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { ChangeDetectionStrategy, Component, inject, signal, computed, OnInit, DestroyRef, PLATFORM_ID } from '@angular/core';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { ReactiveFormsModule, FormGroup, FormControl, FormArray, Validators, AbstractControl } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CahierService } from '../../../core/services/cahier.service';
@@ -41,6 +41,9 @@ export class CahierComponent implements OnInit {
   private readonly excelService = inject(ExcelExportService);
   private readonly inactivityService = inject(InactivityService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly platformId = inject(PLATFORM_ID);
+
+  private readonly LOCAL_FORM_DRAFT_KEY = 'portsync_uncommitted_form_draft';
 
   // UI state signals
   readonly isCreationPageOpen = signal<boolean>(false);
@@ -51,6 +54,7 @@ export class CahierComponent implements OnInit {
   readonly validationBlockMessage = signal<string | null>(null);
   readonly validationBlockTitle = signal<string>('Saisie bloquée');
   readonly detailGroupingMode = signal<'week' | 'type'>('week');
+  readonly restoredLocalDraftBanner = signal<boolean>(false);
 
   // Date de début choisie par l'utilisateur pour démarrer une nouvelle semaine, par site
   readonly newWeekStartDates = signal<Record<string, string>>({});
@@ -520,13 +524,116 @@ export class CahierComponent implements OnInit {
     this.globalDnPrefix.set(newPrefix);
   }
 
+  private saveFormToLocalStorage() {
+    if (!isPlatformBrowser(this.platformId)) return;
+    try {
+      if (!this.isCreationPageOpen()) return;
+
+      const hasTableData = this.itemsFormArray.controls.some(group => {
+        const v = group.value;
+        return (v.produit && String(v.produit).trim() !== '') || 
+               (v.qte !== null && Number(v.qte) > 0) || 
+               (v.pu !== null && Number(v.pu) > 0) ||
+               (v.dnNumber && String(v.dnNumber).trim() !== '') ||
+               (v.dn && String(v.dn).trim() !== '');
+      });
+
+      if (this.operationForm.dirty || hasTableData) {
+        const rawValue = this.operationForm.getRawValue();
+        const payload = {
+          rawValue,
+          activeDraftId: this.activeDraftId(),
+          isEditingRegistered: this.isEditingRegistered(),
+          step: this.currentStep(),
+          timestamp: Date.now()
+        };
+        localStorage.setItem(this.LOCAL_FORM_DRAFT_KEY, JSON.stringify(payload));
+      }
+    } catch (e) {
+      console.error('Erreur lors de la sauvegarde locale intermédiaire:', e);
+    }
+  }
+
+  clearLocalDraftBuffer() {
+    if (!isPlatformBrowser(this.platformId)) return;
+    try {
+      localStorage.removeItem(this.LOCAL_FORM_DRAFT_KEY);
+      this.restoredLocalDraftBanner.set(false);
+    } catch (e) {
+      console.error('Erreur nettoyage tampon local:', e);
+    }
+  }
+
+  private checkAndRestoreUncommittedDraft() {
+    if (!isPlatformBrowser(this.platformId)) return;
+    try {
+      const stored = localStorage.getItem(this.LOCAL_FORM_DRAFT_KEY);
+      if (!stored) return;
+
+      const payload = JSON.parse(stored);
+      if (payload && payload.rawValue && payload.timestamp && (Date.now() - payload.timestamp < 48 * 60 * 60 * 1000)) {
+        const val = payload.rawValue;
+        this.itemsFormArray.clear();
+        this.activeDraftId.set(payload.activeDraftId || null);
+        this.isEditingRegistered.set(!!payload.isEditingRegistered);
+
+        this.operationForm.patchValue({
+          site: val.site || '',
+          type: val.type || '',
+          date: val.date || '',
+          heure: val.heure || '',
+          quantite: val.quantite !== undefined ? val.quantite : null,
+          produit: val.produit || '',
+          destination: val.destination || '',
+          sonLevel: val.sonLevel || 'Moyen',
+          frequence: val.frequence || 'Basse',
+          details: val.details || '',
+          is_rattrapage: val.is_rattrapage || false,
+          real_date: val.real_date || ''
+        });
+
+        if (Array.isArray(val.items) && val.items.length > 0) {
+          val.items.forEach((item: Record<string, unknown>) => {
+            const dnVal = (item['dn'] as string) || `${item['dnPrefix'] || 'DN'} ${item['dnNumber'] || ''}`.trim();
+            this.itemsFormArray.push(this.createItemFormGroup(
+              (item['date'] as string) || val.date || '',
+              dnVal,
+              (item['produit'] as string) || '',
+              item['qte'] !== null && item['qte'] !== undefined ? Number(item['qte']) : null,
+              item['pu'] !== null && item['pu'] !== undefined ? Number(item['pu']) : null,
+              item['montant'] !== null && item['montant'] !== undefined ? Number(item['montant']) : null,
+              (item['matricule'] as string) || ''
+            ));
+          });
+        }
+
+        if (payload.step) {
+          this.currentStep.set(payload.step);
+        } else {
+          this.currentStep.set(3);
+        }
+
+        this.isCreationPageOpen.set(true);
+        this.restoredLocalDraftBanner.set(true);
+      } else {
+        localStorage.removeItem(this.LOCAL_FORM_DRAFT_KEY);
+      }
+    } catch (e) {
+      console.error('Erreur lors de la restauration de la saisie locale:', e);
+    }
+  }
+
   ngOnInit() {
-    // Sync form changes to our formValue signal for live preview
+    // Check if an uncommitted form draft buffer exists in localStorage
+    this.checkAndRestoreUncommittedDraft();
+
+    // Sync form changes to our formValue signal and auto-save locally
     this.formValue.set(this.operationForm.value as OperationFormValue);
     this.operationForm.valueChanges
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(val => {
         this.formValue.set(val as OperationFormValue);
+        this.saveFormToLocalStorage();
       });
 
     // Enregistrer la sauvegarde automatique en brouillon lors d'une déconnexion automatique d'inactivité
@@ -541,7 +648,13 @@ export class CahierComponent implements OnInit {
         });
 
         if (this.operationForm.dirty || hasTableData) {
-          await this.saveAsDraft();
+          try {
+            await this.saveAsDraft();
+          } catch (err) {
+            console.error('Erreur lors de la sauvegarde Supabase du brouillon, la saisie reste sauvegardée localement:', err);
+            // Save locally as fallback
+            this.saveFormToLocalStorage();
+          }
         }
       }
     });
@@ -552,19 +665,33 @@ export class CahierComponent implements OnInit {
   }
 
   sortItemsByDn<T extends { dnNumber?: string; dn?: string }>(items: T[]): T[] {
+    if (!items || !Array.isArray(items)) return [];
     return [...items].sort((a, b) => {
       const aVal = (a.dnNumber || a.dn || '').toString().trim();
       const bVal = (b.dnNumber || b.dn || '').toString().trim();
+
+      if (!aVal && !bVal) return 0;
+      if (!aVal) return 1;
+      if (!bVal) return -1;
+
+      const aMatch = aVal.match(/\d+/);
+      const bMatch = bVal.match(/\d+/);
+
+      if (aMatch && bMatch) {
+        const aNum = parseInt(aMatch[0], 10);
+        const bNum = parseInt(bMatch[0], 10);
+        if (aNum !== bNum) {
+          return aNum - bNum;
+        }
+      }
+
       return aVal.localeCompare(bVal, undefined, { numeric: true, sensitivity: 'base' });
     });
   }
 
   getSortedOpItems(op: Operation): OperationItem[] {
     if (!op || !op.items || !Array.isArray(op.items)) return [];
-    if ((op.site === 'AFISA' || op.site === 'SCMC') && op.type === 'Chargement') {
-      return this.sortItemsByDn(op.items);
-    }
-    return op.items;
+    return this.sortItemsByDn(op.items);
   }
 
   // Live preview computed signal
@@ -646,6 +773,7 @@ export class CahierComponent implements OnInit {
 
   // Opens the creation page view
   openNewOperationModal() {
+    this.clearLocalDraftBuffer();
     this.isEditingRegistered.set(false);
     this.itemsFormArray.clear();
     this.activeDraftId.set(null);
@@ -829,6 +957,7 @@ export class CahierComponent implements OnInit {
       };
 
       await this.cahierService.saveDraft(draftData);
+      this.clearLocalDraftBuffer();
       this.isCreationPageOpen.set(false);
     } catch (err: unknown) {
       console.error(err);
@@ -1056,6 +1185,7 @@ export class CahierComponent implements OnInit {
       };
 
       await this.cahierService.addOperation(opData);
+      this.clearLocalDraftBuffer();
       this.isCreationPageOpen.set(false); // Close directly, bypassing dirty closeModal check
     } catch (err: unknown) {
       console.error(err);

@@ -7,7 +7,7 @@ import {
   FormArray,
   Validators,
 } from '@angular/forms';
-import { CahierService } from '../../../core/services/cahier.service';
+import { CahierService, sortItemsByDn } from '../../../core/services/cahier.service';
 import { PdfExportService } from '../../../core/services/pdf-export.service';
 import { ExcelExportService } from '../../../core/services/excel-export.service';
 import { DocxExportService } from '../../../core/services/docx-export.service';
@@ -304,6 +304,11 @@ export class AdminCahierViewComponent {
     return Number(op.montant_total) || 0;
   }
 
+  getSortedOpItems(op: Operation): OperationItem[] {
+    if (!op || !op.items || !Array.isArray(op.items)) return [];
+    return sortItemsByDn(op.items);
+  }
+
   isGroupDn(group: TypeSiteGroup): boolean {
     const type = (group.type || '').trim().toLowerCase();
     const site = (group.site || '').trim().toUpperCase();
@@ -586,6 +591,7 @@ export class AdminCahierViewComponent {
 
     try {
       await this.cahierService.adminUpdateOperation(updatedOp);
+      await this.cahierService.loadAllOperationsForAdmin();
       this.editingOperation.set(null);
     } catch (err) {
       this.editError.set(

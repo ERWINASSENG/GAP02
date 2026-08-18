@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import * as XLSX from 'xlsx';
 import { Operation, MonthlySummary } from '../../shared/models/cahier.model';
+import { sortItemsByDn } from './cahier.service';
 
 @Injectable({
   providedIn: 'root'
@@ -29,7 +30,7 @@ export class ExcelExportService {
     ];
 
     if (op.items && op.items.length > 0) {
-      op.items.forEach(item => {
+      sortItemsByDn(op.items).forEach(item => {
         wsData.push([
           item.date,
           item.dn,
@@ -109,7 +110,7 @@ export class ExcelExportService {
 
     summary.operations.forEach(op => {
       if (op.items && op.items.length > 0) {
-        op.items.forEach(item => {
+        sortItemsByDn(op.items).forEach(item => {
           wsData.push([
             op.id,
             op.type,
@@ -229,7 +230,7 @@ export class ExcelExportService {
 
       group.ops.forEach(op => {
         if (op.items && op.items.length > 0) {
-          op.items.forEach(item => {
+          sortItemsByDn(op.items).forEach(item => {
             wsData.push([
               op.id,
               item.date || op.date,

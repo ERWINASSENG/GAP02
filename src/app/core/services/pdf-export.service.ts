@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { Operation, MonthlySummary, OperationItem } from '../../shared/models/cahier.model';
+import { sortItemsByDn } from './cahier.service';
 
 interface JspdfExtended {
   lastAutoTable?: {
@@ -199,7 +200,7 @@ export class PdfExportService {
         };
       }
 
-      const data = (op.items || []).map(item => {
+      const data = sortItemsByDn(op.items || []).map(item => {
         if (op.type === 'Chargement Camions') {
           return [
             this.formatFrenchDate(item.date),

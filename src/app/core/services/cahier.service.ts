@@ -1,9 +1,34 @@
 import { Injectable, inject, signal, computed, effect, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
-import { Operation, MonthlySummary, WorkWeek } from '../../shared/models/cahier.model';
+import { Operation, OperationItem, MonthlySummary, WorkWeek } from '../../shared/models/cahier.model';
 import { SupabaseService } from './supabase.service';
 import { AuthService } from './auth.service';
 import { PortUser } from '../../shared/models/auth.model';
+
+export function sortItemsByDn<T extends { dnNumber?: string; dn?: string }>(items: T[]): T[] {
+  if (!items || !Array.isArray(items)) return [];
+  return [...items].sort((a, b) => {
+    const aVal = (a.dnNumber || a.dn || '').toString().trim();
+    const bVal = (b.dnNumber || b.dn || '').toString().trim();
+
+    if (!aVal && !bVal) return 0;
+    if (!aVal) return 1;
+    if (!bVal) return -1;
+
+    const aMatch = aVal.match(/\d+/);
+    const bMatch = bVal.match(/\d+/);
+
+    if (aMatch && bMatch) {
+      const aNum = parseInt(aMatch[0], 10);
+      const bNum = parseInt(bMatch[0], 10);
+      if (aNum !== bNum) {
+        return aNum - bNum;
+      }
+    }
+
+    return aVal.localeCompare(bVal, undefined, { numeric: true, sensitivity: 'base' });
+  });
+}
 
 @Injectable({
   providedIn: 'root'
@@ -818,6 +843,56 @@ export class CahierService {
     }
   }
 
+  private async saveOperationViaApi(op: Partial<Operation>): Promise<Operation | null> {
+    try {
+      const token = await this.getAuthToken();
+      if (!token) return null;
+
+      const response = await fetch('/api/cahier/operations', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(op)
+      });
+
+      if (!response.ok) {
+        const errJson = await response.json().catch(() => ({}));
+        throw new Error(errJson.error || 'Erreur lors de l\'enregistrement de l\'opération via API.');
+      }
+
+      const resJson = await response.json();
+      if (resJson.success && resJson.operation) {
+        const mapped = this.mapDatabaseOperations([resJson.operation]);
+        return mapped[0] || null;
+      }
+      return null;
+    } catch (e) {
+      console.warn('API fallback error saving operation:', e);
+      throw e;
+    }
+  }
+
+  private async deleteOperationViaApi(id: string): Promise<boolean> {
+    try {
+      const token = await this.getAuthToken();
+      if (!token) return false;
+
+      const response = await fetch(`/api/cahier/operations/${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      return response.ok;
+    } catch (e) {
+      console.warn('API fallback error deleting operation:', e);
+      return false;
+    }
+  }
+
   /**
    * Validates if a date can be inserted for a specific site's week
    */
@@ -968,6 +1043,17 @@ export class CahierService {
       const isDraftVal = dbOp['isdraft'] !== undefined ? dbOp['isdraft'] : (dbOp['isDraft'] !== undefined ? dbOp['isDraft'] : false);
       const sonLevelVal = dbOp['sonlevel'] !== undefined ? dbOp['sonlevel'] : (dbOp['sonLevel'] || 'Moyen');
       const rawItems = dbOp['operation_items'] || [];
+      const mappedItems: OperationItem[] = Array.isArray(rawItems) ? (rawItems as Record<string, unknown>[]).map((item) => ({
+        id: (item['id'] as string) || crypto.randomUUID(),
+        date: (item['date'] as string) || (dbOp['date'] as string),
+        dn: (item['dn'] as string) || '',
+        matricule: ((item['matricule'] as string) || '').toUpperCase().replace(/\s+/g, ''),
+        produit: (item['produit'] as string) || '',
+        qte: Number(item['quantite'] ?? item['qte']) || 0,
+        pu: Number(item['pu']) || 0,
+        montant: Number(item['montant']) || 0
+      })) : [];
+
       return {
         id: dbOp['id'] as string,
         site: dbOp['site'] as string,
@@ -983,16 +1069,7 @@ export class CahierService {
         week_id: dbOp['week_id'] as string,
         is_rattrapage: !!(dbOp['is_rattrapage'] || dbOp['israttrapage']),
         real_date: (dbOp['real_date'] || dbOp['realdate'] || '') as string,
-        items: Array.isArray(rawItems) ? (rawItems as Record<string, unknown>[]).map((item) => ({
-          id: (item['id'] as string) || crypto.randomUUID(),
-          date: (item['date'] as string) || (dbOp['date'] as string),
-          dn: (item['dn'] as string) || '',
-          matricule: ((item['matricule'] as string) || '').toUpperCase().replace(/\s+/g, ''),
-          produit: (item['produit'] as string) || '',
-          qte: Number(item['quantite'] ?? item['qte']) || 0,
-          pu: Number(item['pu']) || 0,
-          montant: Number(item['montant']) || 0
-        })) : []
+        items: sortItemsByDn(mappedItems)
       };
     });
   }
@@ -1050,11 +1127,36 @@ export class CahierService {
     };
 
     const previousOperations = this._operations();
-    const filtered = previousOperations.filter(op => op.id !== id);
-    const updated = [finalizedOp, ...filtered];
-    this._operations.set(updated);
+    const previousAdminOperations = this._adminOperations();
+    const filteredOps = previousOperations.filter(op => op.id !== id);
+    const updatedOps = [finalizedOp, ...filteredOps];
+    this._operations.set(updatedOps);
+
+    if (user?.role === 'admin') {
+      const filteredAdmin = previousAdminOperations.filter(op => op.id !== id);
+      this._adminOperations.set([finalizedOp, ...filteredAdmin]);
+    }
 
     try {
+      // 1. Essayer l'API serveur avec bypass RLS si rôle admin ou secours
+      let savedResult: Operation | null = null;
+      try {
+        savedResult = await this.saveOperationViaApi(finalizedOp);
+      } catch (apiErr) {
+        console.warn('API save fallback, attempting direct Supabase...', apiErr);
+      }
+
+      if (savedResult) {
+        const ops = this._operations().map(o => o.id === finalizedOp.id ? savedResult! : o);
+        this._operations.set(ops);
+        if (user?.role === 'admin') {
+          const adminOps = this._adminOperations().map(o => o.id === finalizedOp.id ? savedResult! : o);
+          this._adminOperations.set(adminOps);
+        }
+        return savedResult;
+      }
+
+      // 2. Direct Supabase if API fallback returned null
       const { data: opData, error: opError } = await this.supabaseService.client
         .from('operations')
         .upsert([{
@@ -1111,8 +1213,9 @@ export class CahierService {
       }
     } catch (err) {
       console.error('Error saving operation:', err);
-      // Rollback: l'opération n'a pas été correctement persistée, on ne ment pas à l'UI
+      // Rollback
       this._operations.set(previousOperations);
+      this._adminOperations.set(previousAdminOperations);
       const message = err instanceof Error
         ? err.message
         : (typeof err === 'object' && err !== null && 'message' in err)
@@ -1305,10 +1408,34 @@ export class CahierService {
    */
   async adminUpdateOperation(op: Operation): Promise<Operation> {
     const previousAdminOps = this._adminOperations();
-    const updatedOptimistic = previousAdminOps.map(o => o.id === op.id ? op : o);
-    this._adminOperations.set(updatedOptimistic);
+    const previousUserOps = this._operations();
+
+    const updatedAdminOptimistic = previousAdminOps.map(o => o.id === op.id ? op : o);
+    const updatedUserOptimistic = previousUserOps.map(o => o.id === op.id ? op : o);
+
+    this._adminOperations.set(updatedAdminOptimistic);
+    if (previousUserOps.some(o => o.id === op.id)) {
+      this._operations.set(updatedUserOptimistic);
+    }
 
     try {
+      // 1. Priorité à l'API serveur (Bypass RLS pour administrateur)
+      let savedResult: Operation | null = null;
+      try {
+        savedResult = await this.saveOperationViaApi(op);
+      } catch (apiErr) {
+        console.warn('API update fallback (admin), attempting direct Supabase...', apiErr);
+      }
+
+      if (savedResult) {
+        const adminOps = this._adminOperations().map(o => o.id === op.id ? savedResult! : o);
+        this._adminOperations.set(adminOps);
+        const userOps = this._operations().map(o => o.id === op.id ? savedResult! : o);
+        this._operations.set(userOps);
+        return savedResult;
+      }
+
+      // 2. Direct Supabase
       const { error: opError } = await this.supabaseService.client
         .from('operations')
         .upsert([{
@@ -1362,6 +1489,7 @@ export class CahierService {
     } catch (err) {
       console.error('Error updating operation (admin):', err);
       this._adminOperations.set(previousAdminOps);
+      this._operations.set(previousUserOps);
       const message = err instanceof Error
         ? err.message
         : (typeof err === 'object' && err !== null && 'message' in err)
@@ -1375,14 +1503,27 @@ export class CahierService {
 
   /**
    * Supprime une opération depuis la vue admin, quel que soit son propriétaire.
-   * Agit sur _adminOperations (et non _operations, propre à l'utilisateur connecté).
+   * Agit sur _adminOperations et _operations.
    */
   async adminDeleteOperation(id: string): Promise<boolean> {
     const previousAdminOps = this._adminOperations();
-    const updated = previousAdminOps.filter(op => op.id !== id);
-    this._adminOperations.set(updated);
+    const previousUserOps = this._operations();
+
+    this._adminOperations.set(previousAdminOps.filter(op => op.id !== id));
+    this._operations.set(previousUserOps.filter(op => op.id !== id));
 
     try {
+      let apiSuccess = false;
+      try {
+        apiSuccess = await this.deleteOperationViaApi(id);
+      } catch (e) {
+        console.warn('API delete error, falling back to direct Supabase:', e);
+      }
+
+      if (apiSuccess) {
+        return true;
+      }
+
       const { error: itemsError } = await this.supabaseService.client
         .from('operation_items')
         .delete()
@@ -1403,6 +1544,7 @@ export class CahierService {
     } catch (err) {
       console.error('Error deleting operation (admin):', err);
       this._adminOperations.set(previousAdminOps);
+      this._operations.set(previousUserOps);
       const message = err instanceof Error
         ? err.message
         : (typeof err === 'object' && err !== null && 'message' in err)

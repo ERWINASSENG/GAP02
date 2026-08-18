@@ -271,10 +271,6 @@ app.patch('/api/system/collaborators/:id', async (req, res) => {
     }
 
     const existingAppMetadata = existingUserData.user.app_metadata || {};
-    if (existingAppMetadata['created_by'] !== adminUser.id) {
-      res.status(403).json({ error: 'Vous ne pouvez modifier que les collaborateurs que vous avez créés.' });
-      return;
-    }
 
     const { data: updateData, error: updateError } = await supabaseAdmin.auth.admin.updateUserById(userId, {
       email: email.trim(),
@@ -300,6 +296,196 @@ app.patch('/api/system/collaborators/:id', async (req, res) => {
   } catch (err: unknown) {
     const errMsg = err instanceof Error ? err.message : 'Internal Server Error';
     console.error('Error in PATCH /api/system/collaborators/:id:', errMsg);
+    res.status(500).json({ error: errMsg });
+  }
+});
+
+// API: Enregistrer ou modifier une opération (avec privilèges d'administration / bypass RLS)
+app.post('/api/cahier/operations', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      res.status(401).json({ error: 'Non autorisé' });
+      return;
+    }
+
+    let supabaseUrl = process.env['SUPABASE_URL'];
+    if (!supabaseUrl || !supabaseUrl.startsWith('http')) {
+      supabaseUrl = 'https://jwpigzkxkbszxzngfepn.supabase.co';
+    }
+    const supabaseServiceRole = process.env['SUPABASE_SERVICE_ROLE_KEY'];
+
+    if (!supabaseServiceRole) {
+      res.status(500).json({ error: 'La configuration du serveur est incomplète.' });
+      return;
+    }
+
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRole, {
+      auth: { autoRefreshToken: false, persistSession: false }
+    });
+
+    const token = authHeader.replace('Bearer ', '');
+    const { data: authData, error: authError } = await supabaseAdmin.auth.getUser(token);
+    const user = authData?.user;
+
+    if (authError || !user) {
+      res.status(401).json({ error: 'Utilisateur non authentifié.' });
+      return;
+    }
+
+    const role = user.app_metadata?.['role'];
+    const { id, site, type, date, heure, quantite, produit, destination, sonLevel, frequence, details, is_rattrapage, real_date, items } = req.body || {};
+
+    if (!site || !type || !date) {
+      res.status(400).json({ error: 'Champs requis manquants (site, type, date).' });
+      return;
+    }
+
+    // Check existing operation if editing
+    let existingUserId = user.id;
+    let existingCollaborateur = user.user_metadata?.['display_name'] || user.email || 'Anonyme';
+
+    if (id) {
+      const { data: existingOp } = await supabaseAdmin.from('operations').select('*').eq('id', id).maybeSingle();
+      if (existingOp) {
+        // If not admin, check if user owns it
+        if (role !== 'admin' && existingOp.user_id !== user.id) {
+          res.status(403).json({ error: 'Modification non autorisée.' });
+          return;
+        }
+        existingUserId = existingOp.user_id;
+        existingCollaborateur = existingOp.collaborateur || existingCollaborateur;
+      }
+    }
+
+    const payload: Record<string, unknown> = {
+      user_id: existingUserId,
+      collaborateur: existingCollaborateur,
+      site,
+      type,
+      date,
+      heure: heure || '',
+      quantite: quantite !== undefined ? quantite : null,
+      produit: produit || null,
+      destination: destination || null,
+      son_level: sonLevel || null,
+      frequence: frequence || null,
+      details: details || null,
+      is_rattrapage: !!is_rattrapage,
+      real_date: real_date || null
+    };
+
+    let opId = id;
+    if (opId) {
+      payload['id'] = opId;
+      const { error: updateErr } = await supabaseAdmin.from('operations').update(payload).eq('id', opId);
+      if (updateErr) {
+        res.status(400).json({ error: updateErr.message });
+        return;
+      }
+    } else {
+      const { data: newOp, error: insertErr } = await supabaseAdmin.from('operations').insert([payload]).select('id').single();
+      if (insertErr || !newOp) {
+        res.status(400).json({ error: insertErr?.message || 'Erreur lors de la création de l\'opération.' });
+        return;
+      }
+      opId = newOp.id;
+    }
+
+    // Replace items if array is provided
+    if (Array.isArray(items)) {
+      await supabaseAdmin.from('operation_items').delete().eq('operation_id', opId);
+
+      if (items.length > 0) {
+        const itemsToInsert = items.map((it: Record<string, unknown>) => ({
+          operation_id: opId,
+          date: it['date'] || '',
+          dn: it['dn'] || '',
+          matricule: it['matricule'] || '',
+          produit: it['produit'] || '',
+          qte: Number(it['qte']) || 0,
+          pu: Number(it['pu']) || 0,
+          montant: Number(it['montant']) || 0
+        }));
+
+        const { error: itemsErr } = await supabaseAdmin.from('operation_items').insert(itemsToInsert);
+        if (itemsErr) {
+          console.warn('Error inserting items via server API:', itemsErr.message);
+        }
+      }
+    }
+
+    // Fetch full operation with items
+    const { data: fullOp } = await supabaseAdmin
+      .from('operations')
+      .select('*, operation_items(*)')
+      .eq('id', opId)
+      .single();
+
+    res.json({ success: true, operation: fullOp });
+  } catch (err: unknown) {
+    const errMsg = err instanceof Error ? err.message : 'Internal Server Error';
+    console.error('Error in POST /api/cahier/operations:', errMsg);
+    res.status(500).json({ error: errMsg });
+  }
+});
+
+// API: Supprimer une opération (avec privilèges d'administration / bypass RLS)
+app.delete('/api/cahier/operations/:id', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      res.status(401).json({ error: 'Non autorisé' });
+      return;
+    }
+
+    let supabaseUrl = process.env['SUPABASE_URL'];
+    if (!supabaseUrl || !supabaseUrl.startsWith('http')) {
+      supabaseUrl = 'https://jwpigzkxkbszxzngfepn.supabase.co';
+    }
+    const supabaseServiceRole = process.env['SUPABASE_SERVICE_ROLE_KEY'];
+
+    if (!supabaseServiceRole) {
+      res.status(500).json({ error: 'La configuration du serveur est incomplète.' });
+      return;
+    }
+
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRole, {
+      auth: { autoRefreshToken: false, persistSession: false }
+    });
+
+    const token = authHeader.replace('Bearer ', '');
+    const { data: authData, error: authError } = await supabaseAdmin.auth.getUser(token);
+    const user = authData?.user;
+
+    if (authError || !user) {
+      res.status(401).json({ error: 'Utilisateur non authentifié.' });
+      return;
+    }
+
+    const role = user.app_metadata?.['role'];
+    const opId = req.params.id;
+
+    if (role !== 'admin') {
+      const { data: existingOp } = await supabaseAdmin.from('operations').select('user_id').eq('id', opId).maybeSingle();
+      if (!existingOp || existingOp.user_id !== user.id) {
+        res.status(403).json({ error: 'Suppression non autorisée.' });
+        return;
+      }
+    }
+
+    await supabaseAdmin.from('operation_items').delete().eq('operation_id', opId);
+    const { error: delErr } = await supabaseAdmin.from('operations').delete().eq('id', opId);
+
+    if (delErr) {
+      res.status(400).json({ error: delErr.message });
+      return;
+    }
+
+    res.json({ success: true, id: opId });
+  } catch (err: unknown) {
+    const errMsg = err instanceof Error ? err.message : 'Internal Server Error';
+    console.error('Error in DELETE /api/cahier/operations/:id:', errMsg);
     res.status(500).json({ error: errMsg });
   }
 });

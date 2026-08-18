@@ -15,6 +15,7 @@ import {
   Footer
 } from 'docx';
 import { Operation, MonthlySummary } from '../../shared/models/cahier.model';
+import { sortItemsByDn } from './cahier.service';
 
 interface MonthlyItemWithMeta {
   originalDate: string;
@@ -335,7 +336,7 @@ export class DocxExportService {
 
       // Aplatir et trier les éléments chronologiquement pour le tableau
       const itemsWithMeta: MonthlyItemWithMeta[] = group.ops.flatMap(op => 
-        (op.items || []).map(item => ({
+        sortItemsByDn(op.items || []).map(item => ({
           originalDate: item.date,
           originalTime: op.heure || '00:00',
           dateStr: this.formatFrenchDate(item.date),
@@ -593,18 +594,21 @@ export class DocxExportService {
         })
       );
 
-      const itemsWithMeta: MonthlyItemWithMeta[] = group.ops.flatMap(op =>
-        (op.items && op.items.length > 0) ? op.items.map(item => ({
-          originalDate: item.date || op.date,
-          originalTime: op.heure || '00:00',
-          dateStr: this.formatFrenchDate(item.date || op.date),
-          dn: item.dn || '-',
-          matricule: item.matricule || '-',
-          produit: item.produit || op.produit || '-',
-          qte: item.qte || 0,
-          pu: item.pu || 0,
-          montant: item.montant || 0
-        })) : [{
+      const itemsWithMeta: MonthlyItemWithMeta[] = group.ops.flatMap(op => {
+        if (op.items && op.items.length > 0) {
+          return sortItemsByDn(op.items).map(item => ({
+            originalDate: item.date || op.date,
+            originalTime: op.heure || '00:00',
+            dateStr: this.formatFrenchDate(item.date || op.date),
+            dn: item.dn || '-',
+            matricule: item.matricule || '-',
+            produit: item.produit || op.produit || '-',
+            qte: item.qte || 0,
+            pu: item.pu || 0,
+            montant: item.montant || 0
+          }));
+        }
+        return [{
           originalDate: op.date,
           originalTime: op.heure || '00:00',
           dateStr: this.formatFrenchDate(op.date),
@@ -614,8 +618,8 @@ export class DocxExportService {
           qte: op.quantite || 0,
           pu: 0,
           montant: 0
-        }]
-      );
+        }];
+      });
 
       itemsWithMeta.sort((a, b) => {
         const dateTimeA = `${a.originalDate}T${a.originalTime}`;
@@ -870,7 +874,7 @@ export class DocxExportService {
     );
 
     // Data Rows
-    const items = op.items || [];
+    const items = sortItemsByDn(op.items || []);
     items.forEach(item => {
       const rowCells: TableCell[] = [];
       let dataIndex = 1;
