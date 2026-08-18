@@ -551,24 +551,47 @@ export class CahierComponent implements OnInit {
     });
   }
 
+  sortItemsByDn<T extends { dnNumber?: string; dn?: string }>(items: T[]): T[] {
+    return [...items].sort((a, b) => {
+      const aVal = (a.dnNumber || a.dn || '').toString().trim();
+      const bVal = (b.dnNumber || b.dn || '').toString().trim();
+      return aVal.localeCompare(bVal, undefined, { numeric: true, sensitivity: 'base' });
+    });
+  }
+
+  getSortedOpItems(op: Operation): OperationItem[] {
+    if (!op || !op.items || !Array.isArray(op.items)) return [];
+    if ((op.site === 'AFISA' || op.site === 'SCMC') && op.type === 'Chargement') {
+      return this.sortItemsByDn(op.items);
+    }
+    return op.items;
+  }
+
   // Live preview computed signal
   readonly livePreview = computed<Partial<Operation>>(() => {
     const val = this.formValue();
+    let rawItems = (val.items as Partial<OperationItem>[] || []).map(item => ({
+      date: item.date || '',
+      dn: item.dn || `${(item as Record<string, unknown>)['dnPrefix'] || 'DN'} ${(item as Record<string, unknown>)['dnNumber'] || ''}`.toUpperCase().trim(),
+      matricule: item.matricule || '',
+      produit: item.produit || '',
+      qte: Number(item.qte) || 0,
+      pu: Number(item.pu) || 0,
+      montant: Number(item.montant) || 0,
+      dnNumber: (item as Record<string, unknown>)['dnNumber'] as string | undefined
+    }));
+
+    if ((val.site === 'AFISA' || val.site === 'SCMC') && val.type === 'Chargement') {
+      rawItems = this.sortItemsByDn(rawItems);
+    }
+
     return {
       site: val.site || 'Non défini',
       type: val.type as Operation['type'],
       date: val.date || '',
       heure: val.heure || '',
       details: val.details || '',
-      items: (val.items as Partial<OperationItem>[] || []).map(item => ({
-        date: item.date || '',
-        dn: item.dn || '',
-        matricule: item.matricule || '',
-        produit: item.produit || '',
-        qte: Number(item.qte) || 0,
-        pu: Number(item.pu) || 0,
-        montant: Number(item.montant) || 0
-      }))
+      items: rawItems
     };
   });
 
@@ -777,11 +800,7 @@ export class CahierComponent implements OnInit {
 
       // Sort items if they are "Chargement" at "AFISA" or "SCMC"
       if ((val.site === 'AFISA' || val.site === 'SCMC') && val.type === 'Chargement') {
-        rawItems = [...rawItems].sort((a, b) => {
-          const aNum = (a.dnNumber || '').trim();
-          const bNum = (b.dnNumber || '').trim();
-          return aNum.localeCompare(bNum, undefined, { numeric: true, sensitivity: 'base' });
-        });
+        rawItems = this.sortItemsByDn(rawItems);
       }
 
       const operationDate = rawItems.find(item => !!item.date)?.date || val.date || '';
@@ -1013,11 +1032,7 @@ export class CahierComponent implements OnInit {
 
       // Sort items if they are "Chargement" at "AFISA" or "SCMC"
       if ((val.site === 'AFISA' || val.site === 'SCMC') && val.type === 'Chargement') {
-        rawItems = [...rawItems].sort((a, b) => {
-          const aNum = (a.dnNumber || '').trim();
-          const bNum = (b.dnNumber || '').trim();
-          return aNum.localeCompare(bNum, undefined, { numeric: true, sensitivity: 'base' });
-        });
+        rawItems = this.sortItemsByDn(rawItems);
       }
 
       const opData: Omit<Operation, 'id' | 'collaborateur'> & { id?: string } = {
