@@ -4,6 +4,7 @@ import { ReactiveFormsModule, FormGroup, FormControl, FormArray, Validators, Abs
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CahierService } from '../../../core/services/cahier.service';
 import { AuthService } from '../../../core/services/auth.service';
+import { InactivityService } from '../../../core/services/inactivity.service';
 import { PdfExportService } from '../../../core/services/pdf-export.service';
 import { DocxExportService } from '../../../core/services/docx-export.service';
 import { ExcelExportService } from '../../../core/services/excel-export.service';
@@ -38,6 +39,7 @@ export class CahierComponent implements OnInit {
   private readonly pdfService = inject(PdfExportService);
   private readonly docxService = inject(DocxExportService);
   private readonly excelService = inject(ExcelExportService);
+  private readonly inactivityService = inject(InactivityService);
   private readonly destroyRef = inject(DestroyRef);
 
   // UI state signals
@@ -526,6 +528,27 @@ export class CahierComponent implements OnInit {
       .subscribe(val => {
         this.formValue.set(val as OperationFormValue);
       });
+
+    // Enregistrer la sauvegarde automatique en brouillon lors d'une déconnexion automatique d'inactivité
+    this.inactivityService.registerSaveDraftCallback(async () => {
+      if (this.isCreationPageOpen()) {
+        const hasTableData = this.itemsFormArray.controls.some(group => {
+          const v = group.value;
+          return (v.produit && v.produit.trim() !== '') || 
+                 (v.qte !== null && Number(v.qte) > 0) || 
+                 (v.pu !== null && Number(v.pu) > 0) ||
+                 (v.dnNumber && v.dnNumber.trim() !== '');
+        });
+
+        if (this.operationForm.dirty || hasTableData) {
+          await this.saveAsDraft();
+        }
+      }
+    });
+
+    this.destroyRef.onDestroy(() => {
+      this.inactivityService.unregisterSaveDraftCallback();
+    });
   }
 
   // Live preview computed signal
