@@ -237,10 +237,10 @@ export class CahierComponent implements OnInit {
   readonly productPriceMap = new Map<string, number>([
     ['AFRICANA 50KG', 25],
     ['CDB', 25],
-    ['MAKHLOUT50KG', 25],
-    ['MM50KG', 25],
-    ['MM25KG', 12.5],
-    ['MM5KG', 2.5],
+    ['MAKHLOUT 50KG', 25],
+    ['MM 50KG', 25],
+    ['MM 25KG', 12.5],
+    ['MM 5KG', 2.5],
     ['PRIMO', 25],
     ['SITAL FANGASSOU 25KG', 12.5],
     ['WAGON DE BLÉ', 200],
@@ -252,7 +252,7 @@ export class CahierComponent implements OnInit {
   readonly activeProductRowRef = signal<FormGroup | null>(null);
 
   private normalizeProductString(s: string | null | undefined): string {
-    return (s || '').toString().replace(/\s+/g, ' ').trim().toUpperCase();
+    return (s || '').toString().replace(/[\s\-_]+/g, '').toUpperCase();
   }
 
   private findProductMapKeyByNormalized(normalized: string): string | undefined {

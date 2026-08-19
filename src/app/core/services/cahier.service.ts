@@ -1043,16 +1043,40 @@ export class CahierService {
       const isDraftVal = dbOp['isdraft'] !== undefined ? dbOp['isdraft'] : (dbOp['isDraft'] !== undefined ? dbOp['isDraft'] : false);
       const sonLevelVal = dbOp['sonlevel'] !== undefined ? dbOp['sonlevel'] : (dbOp['sonLevel'] || 'Moyen');
       const rawItems = dbOp['operation_items'] || [];
-      const mappedItems: OperationItem[] = Array.isArray(rawItems) ? (rawItems as Record<string, unknown>[]).map((item) => ({
-        id: (item['id'] as string) || crypto.randomUUID(),
-        date: (item['date'] as string) || (dbOp['date'] as string),
-        dn: (item['dn'] as string) || '',
-        matricule: ((item['matricule'] as string) || '').toUpperCase().replace(/\s+/g, ''),
-        produit: (item['produit'] as string) || '',
-        qte: Number(item['quantite'] ?? item['qte']) || 0,
-        pu: Number(item['pu']) || 0,
-        montant: Number(item['montant']) || 0
-      })) : [];
+      const mappedItems: OperationItem[] = Array.isArray(rawItems) ? (rawItems as Record<string, unknown>[]).map((item) => {
+        const produitStr = ((item['produit'] as string) || '').trim();
+        let puVal = Number(item['pu']) || 0;
+        const qteVal = Number(item['quantite'] ?? item['qte']) || 0;
+
+        // Auto-correct PU for 50kg, 25kg, and 5kg products if recorded incorrectly
+        const normProd = produitStr.toUpperCase().replace(/[\s\-_]+/g, '');
+        if (normProd.includes('MM50') || normProd.includes('50KG') || normProd.includes('AFRICANA') || normProd.includes('CDB') || normProd.includes('MAKHLOUT') || normProd.includes('PRIMO')) {
+          if (puVal === 2.5 || puVal === 12.5 || puVal === 0) {
+            puVal = 25;
+          }
+        } else if (normProd.includes('MM25') || normProd.includes('SITAL25') || normProd.includes('25KG')) {
+          if (puVal === 25 || puVal === 2.5 || puVal === 0) {
+            puVal = 12.5;
+          }
+        } else if (normProd.includes('MM5KG') || (normProd.includes('MM5') && !normProd.includes('MM50')) || normProd.includes('5KG')) {
+          if (puVal === 25 || puVal === 12.5 || puVal === 0) {
+            puVal = 2.5;
+          }
+        }
+
+        const calculatedMontant = qteVal > 0 && puVal > 0 ? qteVal * puVal : (Number(item['montant']) || 0);
+
+        return {
+          id: (item['id'] as string) || crypto.randomUUID(),
+          date: (item['date'] as string) || (dbOp['date'] as string),
+          dn: (item['dn'] as string) || '',
+          matricule: ((item['matricule'] as string) || '').toUpperCase().replace(/\s+/g, ''),
+          produit: produitStr,
+          qte: qteVal,
+          pu: puVal,
+          montant: calculatedMontant
+        };
+      }) : [];
 
       return {
         id: dbOp['id'] as string,
