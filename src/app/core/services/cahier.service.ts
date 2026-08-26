@@ -3,6 +3,7 @@ import { isPlatformBrowser } from '@angular/common';
 import { Operation, OperationItem, MonthlySummary, WorkWeek } from '../../shared/models/cahier.model';
 import { SupabaseService } from './supabase.service';
 import { AuthService } from './auth.service';
+import { ToastService } from './toast.service';
 import { PortUser } from '../../shared/models/auth.model';
 
 export function sortItemsByDn<T extends { dnNumber?: string; dn?: string }>(items: T[]): T[] {
@@ -36,6 +37,7 @@ export function sortItemsByDn<T extends { dnNumber?: string; dn?: string }>(item
 export class CahierService {
   private readonly supabaseService = inject(SupabaseService);
   private readonly authService = inject(AuthService);
+  private readonly toastService = inject(ToastService);
   private readonly platformId = inject(PLATFORM_ID);
   private readonly isBrowser = isPlatformBrowser(this.platformId);
 
@@ -1039,7 +1041,8 @@ export class CahierService {
   }
 
   private mapDatabaseOperations(data: Record<string, unknown>[]): Operation[] {
-    return data.map(dbOp => {
+    let correctedCount = 0;
+    const ops = data.map(dbOp => {
       const isDraftVal = dbOp['isdraft'] !== undefined ? dbOp['isdraft'] : (dbOp['isDraft'] !== undefined ? dbOp['isDraft'] : false);
       const sonLevelVal = dbOp['sonlevel'] !== undefined ? dbOp['sonlevel'] : (dbOp['sonLevel'] || 'Moyen');
       const rawItems = dbOp['operation_items'] || [];
@@ -1047,6 +1050,7 @@ export class CahierService {
         const produitStr = ((item['produit'] as string) || '').trim();
         let puVal = Number(item['pu']) || 0;
         const qteVal = Number(item['quantite'] ?? item['qte']) || 0;
+        const initialPu = puVal;
 
         // Auto-correct PU for 50kg, 25kg, and 5kg products if recorded incorrectly
         const normProd = produitStr.toUpperCase().replace(/[\s\-_]+/g, '');
@@ -1062,6 +1066,10 @@ export class CahierService {
           if (puVal === 25 || puVal === 12.5 || puVal === 0) {
             puVal = 2.5;
           }
+        }
+
+        if (initialPu > 0 && puVal !== initialPu) {
+          correctedCount++;
         }
 
         const calculatedMontant = qteVal > 0 && puVal > 0 ? qteVal * puVal : (Number(item['montant']) || 0);
@@ -1096,6 +1104,15 @@ export class CahierService {
         items: sortItemsByDn(mappedItems)
       };
     });
+
+    if (correctedCount > 0 && this.isBrowser) {
+      this.toastService.warning(
+        'Anomalie de prix détectée',
+        `${correctedCount} ligne(s) avec tarif unitaire erroné ont été automatiquement ajustées.`
+      );
+    }
+
+    return ops;
   }
 
   /**

@@ -1,0 +1,29 @@
+<aside class="toast-container" aria-live="polite" aria-atomic="false">
+  @for (toast of toasts(); track toast.id) {
+    <div
+      class="toast-item"
+      [class]="'toast-' + toast.type"
+      role="alert"
+      [attr.aria-label]="toast.title + ': ' + toast.message"
+    >
+      <div class="toast-icon-wrapper">
+        <mat-icon class="toast-icon">{{ getIconName(toast.type) }}</mat-icon>
+      </div>
+
+      <div class="toast-body">
+        <h4 class="toast-title">{{ toast.title }}</h4>
+        <p class="toast-message">{{ toast.message }}</p>
+      </div>
+
+      <button
+        type="button"
+        class="toast-close-btn"
+        (click)="dismiss(toast.id)"
+        aria-label="Fermer la notification"
+        title="Fermer"
+      >
+        <mat-icon class="close-icon">close</mat-icon>
+      </button>
+    </div>
+  }
+</aside>

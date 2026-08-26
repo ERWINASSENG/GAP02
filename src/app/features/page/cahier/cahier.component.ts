@@ -8,6 +8,7 @@ import { InactivityService } from '../../../core/services/inactivity.service';
 import { PdfExportService } from '../../../core/services/pdf-export.service';
 import { DocxExportService } from '../../../core/services/docx-export.service';
 import { ExcelExportService } from '../../../core/services/excel-export.service';
+import { ToastService } from '../../../core/services/toast.service';
 import { Operation, MonthlySummary, OperationItem, WorkWeek, OPERATION_TYPES } from '../../../shared/models/cahier.model';
 
 interface OperationFormValue {
@@ -40,6 +41,7 @@ export class CahierComponent implements OnInit {
   private readonly docxService = inject(DocxExportService);
   private readonly excelService = inject(ExcelExportService);
   private readonly inactivityService = inject(InactivityService);
+  private readonly toastService = inject(ToastService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly platformId = inject(PLATFORM_ID);
 
@@ -58,6 +60,7 @@ export class CahierComponent implements OnInit {
 
   // Date de début choisie par l'utilisateur pour démarrer une nouvelle semaine, par site
   readonly newWeekStartDates = signal<Record<string, string>>({});
+  private lastPuWarning: string | null = null;
 
   readonly visibleSites = computed<string[]>(() => {
     const user = this.authService.currentUser();
@@ -429,6 +432,28 @@ export class CahierComponent implements OnInit {
       if (group.controls['montant'].value !== calculatedMontant) {
         group.controls['montant'].setValue(calculatedMontant, { emitEvent: false });
         changed = true;
+      }
+
+      // Check for PU anomaly on standard products when user enters custom PU
+      const prodStr = (v.produit || '').toString().trim();
+      const enteredPu = Number(v.pu);
+      if (prodStr && enteredPu > 0) {
+        const norm = this.normalizeProductString(prodStr);
+        const matchedKey = this.findProductMapKeyByNormalized(norm);
+        if (matchedKey) {
+          const expectedPu = this.productPriceMap.get(matchedKey);
+          if (expectedPu !== undefined && Math.abs(enteredPu - expectedPu) > 0.001) {
+            // Check if not already notified for this row state
+            const warningKey = `pu_warn_${matchedKey}_${enteredPu}`;
+            if (!this.lastPuWarning || this.lastPuWarning !== warningKey) {
+              this.lastPuWarning = warningKey;
+              this.toastService.warning(
+                'Tarif inhabituel',
+                `Le prix unitaire saisi (${enteredPu} FCFA) diffère du tarif standard de ${matchedKey} (${expectedPu} FCFA).`
+              );
+            }
+          }
+        }
       }
 
       // Synchronize product/designation for Reconditionnement operations from the first row to all others

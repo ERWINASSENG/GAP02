@@ -1,11 +1,12 @@
 import {ChangeDetectionStrategy, Component, inject} from '@angular/core';
 import {RouterOutlet} from '@angular/router';
 import {InactivityService} from './core/services/inactivity.service';
+import {ToastComponent} from './shared/components/toast/toast.component';
 
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-root',
-  imports: [RouterOutlet],
+  imports: [RouterOutlet, ToastComponent],
   templateUrl: './app.html',
   styleUrl: './app.css',
 })
