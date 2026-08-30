@@ -3,7 +3,6 @@ import { isPlatformBrowser } from '@angular/common';
 import { Operation, OperationItem, MonthlySummary, WorkWeek } from '../../shared/models/cahier.model';
 import { SupabaseService } from './supabase.service';
 import { AuthService } from './auth.service';
-import { ToastService } from './toast.service';
 import { PortUser } from '../../shared/models/auth.model';
 
 export function sortItemsByDn<T extends { dnNumber?: string; dn?: string }>(items: T[]): T[] {
@@ -37,7 +36,6 @@ export function sortItemsByDn<T extends { dnNumber?: string; dn?: string }>(item
 export class CahierService {
   private readonly supabaseService = inject(SupabaseService);
   private readonly authService = inject(AuthService);
-  private readonly toastService = inject(ToastService);
   private readonly platformId = inject(PLATFORM_ID);
   private readonly isBrowser = isPlatformBrowser(this.platformId);
 

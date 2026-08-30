@@ -1323,6 +1323,24 @@ export class CahierComponent implements OnInit {
     });
   }
 
+  // Check if a specific item line should display the rattrapage badge
+  isItemRattrapage(op: Operation, item?: OperationItem): boolean {
+    const rawDate = item?.date || (op.is_rattrapage && op.real_date ? op.real_date : op.date);
+    if (!rawDate) return !!op.is_rattrapage;
+
+    const active = op.site ? this.cahierService.getActiveWeek(op.site) : null;
+    if (!active || !active.start_date || !active.end_date) {
+      return !!op.is_rattrapage;
+    }
+
+    const itemDate = rawDate.slice(0, 10);
+    const startDate = active.start_date.slice(0, 10);
+    const endDate = active.end_date.slice(0, 10);
+
+    // If item date is strictly before the active week's start date, it is a rattrapage
+    return itemDate < startDate || (!!op.is_rattrapage && (itemDate < startDate || itemDate > endDate));
+  }
+
   // Clear detailed summary and return to main monthly table
   backToMonthly() {
     this.selectedSummaryKeys.set(null);

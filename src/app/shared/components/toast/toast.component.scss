@@ -119,14 +119,14 @@
   border-radius: 0.625rem;
   flex-shrink: 0;
 
-  .toast-icon {
-    font-size: 1.35rem;
+  .toast-svg-icon {
     width: 1.35rem;
     height: 1.35rem;
+    stroke-width: 2.2;
   }
 }
 
-.toast-body {
+.toast-content {
   flex: 1;
   min-width: 0;
 
@@ -170,10 +170,9 @@
     outline-offset: 2px;
   }
 
-  .close-icon {
-    font-size: 1.15rem;
-    width: 1.15rem;
-    height: 1.15rem;
+  .toast-close-svg {
+    width: 1.125rem;
+    height: 1.125rem;
   }
 }
 
