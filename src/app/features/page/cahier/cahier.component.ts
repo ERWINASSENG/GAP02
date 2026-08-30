@@ -871,9 +871,10 @@ export class CahierComponent implements OnInit {
     const weeks = this.cahierService.weeks();
     if (op.week_id) {
       const week = weeks.find(w => w.id === op.week_id);
-      if (week?.is_closed) return true;
+      if (week) return week.is_closed;
     }
-    if (op.site && op.date) {
+    // Si pas de week_id et pas en rattrapage, fallback sur la date
+    if (!op.is_rattrapage && op.site && op.date) {
       const closed = weeks.find(w => w.site === op.site && w.is_closed && op.date >= w.start_date && op.date <= w.end_date);
       if (closed) return true;
     }
@@ -1406,13 +1407,13 @@ export class CahierComponent implements OnInit {
       let weekId = op.week_id;
       let week = weekId ? weekMap.get(weekId) : undefined;
 
-      if (week && (!op.site || op.date < week.start_date || op.date > week.end_date)) {
-        week = undefined;
-        weekId = undefined;
-      }
-
+      // Si l'opération n'a pas de week_id valide mais a un site, on cherche la semaine par date (hors rattrapage)
       if (!week && op.site) {
-        week = weeks.find(w => w.site === op.site && op.date >= w.start_date && op.date <= w.end_date);
+        if (op.is_rattrapage) {
+          week = this.cahierService.getActiveWeek(op.site);
+        } else {
+          week = weeks.find(w => w.site === op.site && op.date >= w.start_date && op.date <= w.end_date);
+        }
         weekId = week?.id;
       }
 
@@ -1451,7 +1452,10 @@ export class CahierComponent implements OnInit {
 
       const activeWeek = this.cahierService.getActiveWeek(op.site);
       if (activeWeek) {
-        return op.date >= activeWeek.start_date && op.date <= activeWeek.end_date;
+        if (op.week_id) {
+          return op.week_id === activeWeek.id;
+        }
+        return op.is_rattrapage || (op.date >= activeWeek.start_date && op.date <= activeWeek.end_date);
       }
 
       return true;

@@ -65,10 +65,12 @@ export class AdminCahierViewComponent {
     const ops = this.cahierService.adminOperations().filter(o => !o.isDraft);
 
     return weeks.map(week => {
-      const weekOps = ops.filter(op => 
-        op.week_id === week.id ||
-        (op.site === week.site && op.date >= week.start_date && op.date <= week.end_date)
-      );
+      const weekOps = ops.filter(op => {
+        if (op.week_id) {
+          return op.week_id === week.id;
+        }
+        return op.site === week.site && op.date >= week.start_date && op.date <= week.end_date;
+      });
       const totalMontant = weekOps.reduce((sum, op) => sum + this.getOperationTotal(op), 0);
 
       return {
@@ -115,12 +117,13 @@ export class AdminCahierViewComponent {
     const week = this.selectedWeek();
     if (!week) return [];
 
-    const ops = this.cahierService.adminOperations().filter(op => 
-      !op.isDraft && (
-        op.week_id === week.id ||
-        (op.site === week.site && op.date >= week.start_date && op.date <= week.end_date)
-      )
-    );
+    const ops = this.cahierService.adminOperations().filter(op => {
+      if (op.isDraft) return false;
+      if (op.week_id) {
+        return op.week_id === week.id;
+      }
+      return op.site === week.site && op.date >= week.start_date && op.date <= week.end_date;
+    });
 
     const groups: Record<string, Operation[]> = {};
     ops.forEach((op) => {

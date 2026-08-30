@@ -901,7 +901,30 @@ export class CahierService {
     dateStr: string,
     options?: { isRattrapage?: boolean; realDate?: string }
   ): { allowed: boolean; reason?: string; activeWeek?: WorkWeek } {
-    // 1. Check if the date falls inside a closed week
+    const active = this.getActiveWeek(site);
+
+    // Mode rattrapage : l'opération est rattachée à la semaine active en cours,
+    // avec une date réelle qui peut être antérieure (ex: dans une semaine déjà clôturée).
+    if (options?.isRattrapage) {
+      if (!active) {
+        return {
+          allowed: false,
+          reason: `Aucune semaine de travail active n'est ouverte pour le site ${site}. Veuillez d'abord ouvrir ou configurer la semaine en cours.`
+        };
+      }
+
+      const realDate = options.realDate || dateStr;
+      if (realDate > active.start_date) {
+        return {
+          allowed: false,
+          reason: `En mode rattrapage, la date réelle de l'opération (${realDate}) doit être antérieure au début de la semaine active (${active.start_date}).`
+        };
+      }
+
+      return { allowed: true, activeWeek: active };
+    }
+
+    // Mode normal : vérifier que la date ne tombe pas dans une semaine clôturée
     const closedWeek = this._weeks().find(w => w.site === site && w.is_closed && dateStr >= w.start_date && dateStr <= w.end_date);
     if (closedWeek) {
       return {
@@ -910,33 +933,14 @@ export class CahierService {
       };
     }
 
-    const active = this.getActiveWeek(site);
     if (!active) {
       return { allowed: true };
-    }
-
-    // Rattrapage d'une opération passée :
-    if (options?.isRattrapage && options.realDate) {
-      if (options.realDate > active.start_date) {
-        return {
-          allowed: false,
-          reason: `En mode rattrapage, la date réelle de l'opération (${options.realDate}) doit être antérieure au début de la semaine active (${active.start_date}).`
-        };
-      }
-      if (dateStr < active.start_date || dateStr > active.end_date) {
-        return {
-          allowed: false,
-          reason: `La date comptable d'enregistrement doit se situer dans la semaine active en cours (du ${active.start_date} au ${active.end_date}).`,
-          activeWeek: active
-        };
-      }
-      return { allowed: true, activeWeek: active };
     }
 
     if (dateStr < active.start_date) {
       return {
         allowed: false,
-        reason: `La date ne peut pas être antérieure au début de la semaine active (${active.start_date}).`,
+        reason: `La date ne peut pas être antérieure au début de la semaine active (${active.start_date}). Pour enregistrer une opération passée, veuillez cocher la case « Saisie en rattrapage » ci-dessous.`,
         activeWeek: active
       };
     }
@@ -1123,22 +1127,38 @@ export class CahierService {
       throw new Error(validation.reason);
     }
 
-    // 2. Automatic weekly management : attach the operation only to a week
-    // whose date range actually contains the operation date.
+    // 2. Automatic weekly management : attach the operation to the appropriate week
     let weekId = opData.week_id;
-    if (!weekId && opData.site && opData.date) {
-      const operationDate = opData.date;
-      const matchingWeek = this._weeks().find(w =>
-        w.site === opData.site && operationDate >= w.start_date && operationDate <= w.end_date
-      );
+    let accountingDate = opData.date;
 
-      if (matchingWeek) {
-        weekId = matchingWeek.id;
-      } else {
+    if (opData.site) {
+      if (opData.is_rattrapage) {
+        // En mode rattrapage, l'opération est attachée à la semaine active en cours
         const activeWeek = this.getActiveWeek(opData.site);
-        if (activeWeek && operationDate < activeWeek.start_date) {
-          const shiftedWeek = await this.shiftWeekStart(activeWeek, operationDate);
-          weekId = shiftedWeek.id;
+        if (activeWeek) {
+          weekId = activeWeek.id;
+          // Si la date d'opération était une date passée, la date comptable principale doit être dans la semaine active
+          const today = new Date().toISOString().slice(0, 10);
+          if (today >= activeWeek.start_date && today <= activeWeek.end_date) {
+            accountingDate = today;
+          } else {
+            accountingDate = activeWeek.start_date;
+          }
+        }
+      } else if (!weekId && opData.date) {
+        const operationDate = opData.date;
+        const matchingWeek = this._weeks().find(w =>
+          w.site === opData.site && operationDate >= w.start_date && operationDate <= w.end_date
+        );
+
+        if (matchingWeek) {
+          weekId = matchingWeek.id;
+        } else {
+          const activeWeek = this.getActiveWeek(opData.site);
+          if (activeWeek && operationDate < activeWeek.start_date) {
+            const shiftedWeek = await this.shiftWeekStart(activeWeek, operationDate);
+            weekId = shiftedWeek.id;
+          }
         }
       }
     }
@@ -1146,6 +1166,7 @@ export class CahierService {
     const finalizedOp: Operation = {
       ...opData,
       id,
+      date: accountingDate,
       week_id: weekId,
       collaborateur: user?.displayName || 'Collaborateur',
       user_id: user?.id,
