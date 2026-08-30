@@ -434,10 +434,10 @@ export class CahierComponent implements OnInit {
         changed = true;
       }
 
-      // Check for PU anomaly on standard products when user enters custom PU
+      // Check for PU anomaly on standard products only when user explicitly edits the field
       const prodStr = (v.produit || '').toString().trim();
       const enteredPu = Number(v.pu);
-      if (prodStr && enteredPu > 0) {
+      if (prodStr && enteredPu > 0 && group.controls['pu'].dirty) {
         const norm = this.normalizeProductString(prodStr);
         const matchedKey = this.findProductMapKeyByNormalized(norm);
         if (matchedKey) {
