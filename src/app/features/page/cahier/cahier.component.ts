@@ -1326,20 +1326,28 @@ export class CahierComponent implements OnInit {
 
   // Check if a specific item line should display the rattrapage badge
   isItemRattrapage(op: Operation, item?: OperationItem): boolean {
-    const rawDate = item?.date || (op.is_rattrapage && op.real_date ? op.real_date : op.date);
-    if (!rawDate) return !!op.is_rattrapage;
+    // Si l'opération n'a pas été explicitement marquée en rattrapage, ce n'en est pas un
+    if (!op.is_rattrapage) {
+      return false;
+    }
 
-    const active = op.site ? this.cahierService.getActiveWeek(op.site) : null;
-    if (!active || !active.start_date || !active.end_date) {
+    // Retrouver la semaine d'enregistrement de l'opération
+    const week = op.week_id ? this.cahierService.weeks().find(w => w.id === op.week_id) : (op.site ? this.cahierService.getActiveWeek(op.site) : null);
+    if (!week || !week.start_date) {
       return !!op.is_rattrapage;
     }
 
-    const itemDate = rawDate.slice(0, 10);
-    const startDate = active.start_date.slice(0, 10);
-    const endDate = active.end_date.slice(0, 10);
+    // Vérifier la date effective
+    const rawDate = item?.date || op.real_date || op.date;
+    if (!rawDate) {
+      return false;
+    }
 
-    // If item date is strictly before the active week's start date, it is a rattrapage
-    return itemDate < startDate || (!!op.is_rattrapage && (itemDate < startDate || itemDate > endDate));
+    const itemDate = rawDate.slice(0, 10);
+    const startDate = week.start_date.slice(0, 10);
+
+    // Une opération est un rattrapage uniquement si sa date est antérieure à la semaine dans laquelle elle a été enregistrée
+    return itemDate < startDate;
   }
 
   // Clear detailed summary and return to main monthly table

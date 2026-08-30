@@ -819,18 +819,23 @@ export class AdminCahierViewComponent {
 
   // Vérifie si une ligne spécifique d'une opération doit afficher le badge rattrapage
   isItemRattrapage(op: Operation, item?: OperationItem): boolean {
-    const rawDate = item?.date || (op.is_rattrapage && op.real_date ? op.real_date : op.date);
-    if (!rawDate) return !!op.is_rattrapage;
+    if (!op.is_rattrapage) {
+      return false;
+    }
 
-    const week = this.selectedWeek();
-    if (!week || !week.start_date || !week.end_date) {
+    const week = op.week_id ? this.adminWeeks().find(w => w.id === op.week_id) : this.selectedWeek();
+    if (!week || !week.start_date) {
       return !!op.is_rattrapage;
+    }
+
+    const rawDate = item?.date || op.real_date || op.date;
+    if (!rawDate) {
+      return false;
     }
 
     const itemDate = rawDate.slice(0, 10);
     const startDate = week.start_date.slice(0, 10);
-    const endDate = week.end_date.slice(0, 10);
 
-    return itemDate < startDate || (!!op.is_rattrapage && (itemDate < startDate || itemDate > endDate));
+    return itemDate < startDate;
   }
 }
